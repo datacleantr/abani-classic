@@ -1,0 +1,30 @@
+# bağımlılıklar ve build çıktıları
+node_modules/
+.next/
+out/
+dist/
+*.tsbuildinfo
+next-env.d.ts
+
+# ortam ve gizli anahtarlar — ASLA commit edilmez
+.env
+.env*
+!.env.example
+
+# drizzle artefaktları (opsiyonel: migration'ları saklamak isterseniz açın)
+# drizzle/
+
+# loglar ve geçici dosyalar
+*.log
+.DS_Store
+coverage/
+.turbo/
+
+# transfer paketleri (commit edilmez)
+*.bundle
+*.tar.gz
+*.zip
+
+# IDE
+.idea/
+.vscode/
