@@ -23,13 +23,9 @@ export function CartPageView() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isReady) return;
-    if (lines.length === 0) {
-      setQuote(null);
-      return;
-    }
+    if (!isReady || lines.length === 0) return;
     const controller = new AbortController();
-    setLoading(true);
+    const timer = window.setTimeout(() => setLoading(true), 0);
     fetch("/api/cart/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -52,7 +48,10 @@ export function CartPageView() {
         /* aborted */
       })
       .finally(() => setLoading(false));
-    return () => controller.abort();
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, [lines, couponCode, isReady]);
 
   if (!isReady) {
@@ -81,8 +80,8 @@ export function CartPageView() {
         <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
           {lines.map((line) => (
             <li key={line.variantId} className="flex gap-4 p-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <Link href={`/urun/${line.productSlug}`} className="shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={line.image}
                   alt={line.productName}

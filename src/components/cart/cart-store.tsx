@@ -44,27 +44,34 @@ type CartContextValue = {
 const CartContext = createContext<CartContextValue | null>(null);
 const STORAGE_KEY = "abani-cart-v1";
 
+function readStoredCart(): CartState {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { lines: [], couponCode: "" };
+    const parsed = JSON.parse(raw) as CartState;
+    if (!Array.isArray(parsed.lines)) return { lines: [], couponCode: "" };
+    return {
+      lines: parsed.lines.filter((line) => line.variantId && line.quantity > 0),
+      couponCode: typeof parsed.couponCode === "string" ? parsed.couponCode : "",
+    };
+  } catch {
+    return { lines: [], couponCode: "" };
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CartState>({ lines: [], couponCode: "" });
   const [isReady, setIsReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as CartState;
-        if (Array.isArray(parsed.lines)) {
-          setState({
-            lines: parsed.lines.filter((line) => line.variantId && line.quantity > 0),
-            couponCode: typeof parsed.couponCode === "string" ? parsed.couponCode : "",
-          });
-        }
-      }
-    } catch {
-      // Ignore malformed local cart payloads.
-    }
-    setIsReady(true);
+    // Hydrate from localStorage after mount to avoid SSR mismatch; deferred to a
+    // macrotask so the first client render matches the server HTML.
+    const timer = window.setTimeout(() => {
+      setState(readStoredCart());
+      setIsReady(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {

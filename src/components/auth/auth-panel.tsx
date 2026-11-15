@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 
 import { customerLoginAction, customerRegisterAction } from "@/app/actions/auth";
@@ -114,7 +115,7 @@ export function AuthPanel() {
 
       <p className="mt-4 text-center text-[11px] leading-relaxed text-muted">
         Üyelik için{" "}
-        <a href="/yasal/kvkk" className="underline decoration-line underline-offset-2">KVKK aydınlatma metnini</a>{" "}
+        <Link href="/yasal/kvkk" className="underline decoration-line underline-offset-2">KVKK aydınlatma metnini</Link>{" "}
         inceleyebilirsiniz. Pazarlama izni sipariş işleminden ayrı tutulur.
       </p>
     </div>

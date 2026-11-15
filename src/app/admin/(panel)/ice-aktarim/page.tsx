@@ -26,7 +26,7 @@ export default async function ImportPage() {
         <h1 className="mt-1 text-2xl">Pazaryeri içe aktarımı</h1>
         <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted">
           Yetkili satıcı dışa aktarımı → ham kayıt → doğrulama → eşleştirme → insan onayı →
-          yayın. Dosya hash'i tekrar yüklemelerde uyarı üretir; aynı paket iki kez uygulanmaz.
+          yayın. Dosya hash&apos;i tekrar yüklemelerde uyarı üretir; aynı paket iki kez uygulanmaz.
         </p>
       </header>
 

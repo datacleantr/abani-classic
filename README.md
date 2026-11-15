@@ -4,26 +4,9 @@ Next.js (App Router) + PostgreSQL + Drizzle ORM ile geliştirilmiş, Türkçe, m
 e-ticaret uygulaması. Ürün kataloğu doğruluğu, güvenli sipariş akışı ve operasyonel
 yönetilebilirlik önceliklidir.
 
-## Canlıya geçiş
-
-GitHub'a yükleme, Neon PostgreSQL, Vercel deploy, alan adı/DNS, ödeme webhook'u,
-yasal uyumluluk ve canlıya geçiş sırası için adım adım kılavuz:
-👉 **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)**
-
-Kodu GitHub'a tek komutla yüklemek için (PAT ile):
-```bash
-export GH_TOKEN=github_pat_...   # Settings → Developer settings → PAT (repo kapsamı)
-./scripts/push-to-github.sh
-```
-Veya tek tıkla deploy: yukarıdaki **Deploy with Vercel** butonu.
-Veya manuel: `git remote add origin https://github.com/datacleantr/abani-classic.git && git push -u origin main`
-
-Açık iş kararları: **[docs/OPEN_DECISIONS.md](./docs/OPEN_DECISIONS.md)**
-
 ## Çalıştırma
 
 ```bash
-cp .env.example .env        # DATABASE_URL'i kendi ortamınla doldur
 npm install
 npx drizzle-kit push        # şemayı uygula
 npx tsx src/db/seed.ts      # demo katalog + operasyon verisi (--force ile sıfırlar)
@@ -52,11 +35,9 @@ Kuponlar: `ABANI10` (%10, min 750 TL), `HOSGELDIN` (100 TL, min 500 TL),
 - `src/lib/auth.ts` — DB destekli oturum, scrypt parola, rol yetkileri.
 - `src/app/(store)` — vitrin; `src/app/admin/(panel)` — yönetim paneli.
 - `src/app/actions` — server action'lar (Zod doğrulama + RBAC + audit).
-- `.github/workflows/ci.yml` — her push'ta typecheck + lint + build.
 
 ## Güvenlik notları
 
-- `.env` asla commit edilmez (`.gitignore` ile engelli).
 - Kart verisi hiçbir tabloya yazılmaz; ödeme sağlayıcısı sandbox adapter ile simüle edilir.
 - `/api/payments/webhook` HMAC imza doğrular; `payment_events` tablosundaki benzersiz olay
   kimliği sayesinde aynı bildirim iki kez stok düşmez.

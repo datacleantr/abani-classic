@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { adminLogoutAction } from "@/app/actions/auth";
@@ -58,9 +59,9 @@ export default async function AdminPanelLayout({ children }: { children: ReactNo
               Çıkış yap
             </button>
           </form>
-          <a href="/" className="mt-2 block text-center text-[10px] text-ivory/40 underline underline-offset-2">
+          <Link href="/" className="mt-2 block text-center text-[10px] text-ivory/40 underline underline-offset-2">
             Mağazayı görüntüle
-          </a>
+          </Link>
         </div>
       </aside>
       <div className="min-w-0">
