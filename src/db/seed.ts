@@ -434,7 +434,22 @@ function skuFor(product: ProductSeed, color: string, size: string, index: number
 
 async function main() {
   const force = process.argv.includes("--force");
+
+  // Demo verisi: sahte ürün/sipariş/yorum ve bilinen parolalı hesaplar içerir.
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Seed üretim ortamında çalıştırılamaz (demo verisi ve bilinen parolalar içerir).");
+  }
   const existing = await db.select({ count: sql<number>`count(*)::int` }).from(s.products);
+  const real = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(s.products)
+    .where(sql`${s.products.sourceKey} = 'pazarama'`);
+  if (force && (real[0]?.count ?? 0) > 0 && !process.argv.includes("--wipe-real-catalog")) {
+    throw new Error(
+      `--force gerçek kataloğu (${real[0]?.count} Pazarama ürünü) silerdi. ` +
+        "Bilerek silmek için --wipe-real-catalog ekleyin.",
+    );
+  }
 
   if ((existing[0]?.count ?? 0) > 0 && !force) {
     console.log(`Seed skipped: ${existing[0]?.count} products already exist. Use --force to reset.`);

@@ -22,7 +22,11 @@ const inputFields = [
   { name: "phone", label: "Telefon", type: "tel", autoComplete: "tel", required: true },
 ] as const;
 
-export function CheckoutForm({ prefill }: { prefill: Prefill }) {
+type PaymentInfo =
+  | { available: true; method: "sandbox" | "bank_transfer" }
+  | { available: false; message: string };
+
+export function CheckoutForm({ prefill, payment }: { prefill: Prefill; payment: PaymentInfo }) {
   const { lines, couponCode, isReady, clear } = useCart();
   const router = useRouter();
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -83,7 +87,6 @@ export function CheckoutForm({ prefill }: { prefill: Prefill }) {
       note: String(formData.get("note") ?? ""),
       couponCode: couponCode || undefined,
       marketingConsent: formData.get("marketingConsent") === "on",
-      paymentMode: formData.get("paymentMode") === "on" ? "failure" : "success",
       items: lines.map((line) => ({ variantId: line.variantId, quantity: line.quantity })),
     };
 
@@ -97,16 +100,17 @@ export function CheckoutForm({ prefill }: { prefill: Prefill }) {
         ok: boolean;
         message?: string;
         orderNumber?: string;
+        next?: string;
         fieldErrors?: Record<string, string[]>;
       };
-      if (!data.ok || !data.orderNumber) {
+      if (!data.ok || !data.next) {
         setError(data.message ?? "Sipariş tamamlanamadı.");
         setFieldErrors(data.fieldErrors ?? {});
         setPending(false);
         return;
       }
       clear();
-      router.push(`/siparis/${data.orderNumber}?yeni=1`);
+      router.push(data.next);
     } catch {
       setError("Bağlantı hatası. Lütfen tekrar deneyin.");
       setPending(false);
@@ -187,21 +191,27 @@ export function CheckoutForm({ prefill }: { prefill: Prefill }) {
 
         <section className="rounded-2xl border border-line bg-white p-5">
           <h2 className="text-lg">Ödeme</h2>
-          <p className="mt-1 text-xs text-muted">
-            Bu önizleme ortamında ödeme sağlayıcısı sandbox modunda çalışır. Gerçek kart bilgisi
-            girmeyin; kart verisi hiçbir koşulda sunucuya kaydedilmez.
-          </p>
-          <div className="mt-4 rounded-xl border border-line bg-ivory p-4">
-            <p className="text-sm font-medium">Kart ile ödeme · Sandbox</p>
-            <p className="mt-1 text-xs text-muted">
-              Sipariş oluşturulur, stok rezerve edilir, ardından imzalı sağlayıcı bildirimi simüle
-              edilerek ödeme durumu doğrulanır.
+          {!payment.available ? (
+            <p role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              {payment.message}
             </p>
-            <label className="mt-3 flex items-start gap-2 text-xs text-muted">
-              <input type="checkbox" name="paymentMode" className="mt-0.5 h-4 w-4 rounded border-line" />
-              Başarısız ödeme senaryosunu test et (rezervasyon serbest bırakılır)
-            </label>
-          </div>
+          ) : payment.method === "bank_transfer" ? (
+            <div className="mt-4 rounded-xl border border-line bg-ivory p-4">
+              <p className="text-sm font-medium">Havale / EFT</p>
+              <p className="mt-1 text-xs text-muted">
+                Siparişi tamamladığınızda hesap bilgileri gösterilir ve ürünleriniz 3 gün boyunca
+                sizin için ayrılır. Ödemeniz hesabımıza ulaştığında siparişiniz onaylanır.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-line bg-ivory p-4">
+              <p className="text-sm font-medium">Test ödemesi · Sandbox</p>
+              <p className="mt-1 text-xs text-muted">
+                Bu ortam geliştirme modunda. Siparişten sonra ödeme sağlayıcı simülasyonu açılır;
+                gerçek kart bilgisi istenmez ve hiçbir koşulda saklanmaz.
+              </p>
+            </div>
+          )}
 
           <label className="mt-4 flex items-start gap-2 text-xs text-muted">
             <input type="checkbox" name="marketingConsent" className="mt-0.5 h-4 w-4 rounded border-line" />
@@ -277,7 +287,7 @@ export function CheckoutForm({ prefill }: { prefill: Prefill }) {
           </p>
         ) : null}
 
-        <button type="submit" disabled={pending} className="btn-dark mt-4 w-full">
+        <button type="submit" disabled={pending || !payment.available} className="btn-dark mt-4 w-full">
           {pending ? "Sipariş oluşturuluyor…" : "Siparişi tamamla"}
         </button>
         <Link href="/sepet" className="mt-2 block text-center text-[11px] text-muted underline underline-offset-4">

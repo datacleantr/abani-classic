@@ -1,4 +1,5 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -16,14 +17,19 @@ import {
 } from "@/db/schema";
 import { writeAudit } from "./audit";
 import { ORDER_STATUS_LABELS } from "./format";
+import { logger } from "./logger";
+import type { PaymentMethod } from "./payments";
 import { computeQuote, loadPricedRows } from "./pricing";
 import { checkoutSchema, type CheckoutInput } from "./schemas";
 
 class OrderError extends Error {}
 
-const ORDER_TRANSITIONS: Record<string, string[]> = {
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type OrderItemRow = typeof orderItems.$inferSelect;
+
+export const ORDER_TRANSITIONS: Record<string, string[]> = {
   pending_payment: ["paid", "payment_failed", "cancelled"],
-  payment_failed: ["cancelled", "pending_payment"],
+  payment_failed: ["cancelled"],
   paid: ["processing", "cancelled", "refunded"],
   processing: ["packed", "cancelled"],
   packed: ["shipped", "cancelled"],
@@ -44,7 +50,7 @@ async function generateOrderNumber(tx: typeof db): Promise<string> {
   const now = new Date();
   const prefix = `AB-${String(now.getFullYear()).slice(2)}${String(now.getMonth() + 1).padStart(2, "0")}`;
   for (let attempt = 0; attempt < 10; attempt += 1) {
-    const candidate = `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const candidate = `${prefix}-${Math.floor(100000 + Math.random() * 900000)}`;
     const existing = await tx
       .select({ id: orders.id })
       .from(orders)
@@ -55,11 +61,72 @@ async function generateOrderNumber(tx: typeof db): Promise<string> {
   throw new OrderError("Sipariş numarası üretilemedi, lütfen tekrar deneyin.");
 }
 
+/** Rezervasyonu kesin satışa çevirir: fiziksel stok düşer, ayrılmış miktar çözülür. */
+async function commitReservedStock(tx: Tx, orderNumber: string, items: OrderItemRow[], actor: string) {
+  for (const item of items) {
+    if (!item.variantId) continue;
+    await tx
+      .update(inventory)
+      .set({
+        onHand: sql`${inventory.onHand} - ${item.quantity}`,
+        reserved: sql`${inventory.reserved} - ${item.quantity}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventory.variantId, item.variantId));
+    await tx.insert(stockMovements).values({
+      variantId: item.variantId,
+      type: "sale",
+      quantity: -item.quantity,
+      reference: orderNumber,
+      note: "Ödeme onaylandı, rezervasyon kesinleşti.",
+      actor,
+    });
+  }
+}
+
+/** Ödenmemiş siparişin rezervasyonunu serbest bırakır. */
+async function releaseReservedStock(
+  tx: Tx,
+  orderNumber: string,
+  items: OrderItemRow[],
+  actor: string,
+  note: string,
+) {
+  for (const item of items) {
+    if (!item.variantId) continue;
+    await tx
+      .update(inventory)
+      .set({
+        reserved: sql`greatest(${inventory.reserved} - ${item.quantity}, 0)`,
+        updatedAt: new Date(),
+      })
+      .where(eq(inventory.variantId, item.variantId));
+    await tx.insert(stockMovements).values({
+      variantId: item.variantId,
+      type: "reservation_release",
+      quantity: item.quantity,
+      reference: orderNumber,
+      note,
+      actor,
+    });
+  }
+}
+
+export function tokensMatch(expected: string, provided: string | null | undefined): boolean {
+  if (!provided) return false;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(provided);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 export type PlaceOrderResult =
-  | { ok: true; orderNumber: string; grandTotal: number; customerId: string }
+  | { ok: true; orderNumber: string; accessToken: string; grandTotal: number; customerId: string }
   | { ok: false; message: string; fieldErrors?: Record<string, string[]> };
 
-export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult> {
+export async function placeOrder(
+  input: CheckoutInput,
+  payment: { method: PaymentMethod; reservationMinutes: number },
+): Promise<PlaceOrderResult> {
   const parsed = checkoutSchema.safeParse(input);
   if (!parsed.success) {
     return {
@@ -138,6 +205,7 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
       }
 
       const orderNumber = await generateOrderNumber(tx as unknown as typeof db);
+      const accessToken = randomBytes(24).toString("hex");
 
       const [order] = await tx
         .insert(orders)
@@ -161,6 +229,9 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
           grandTotal: quote.grandTotal,
           couponCode: quote.couponCode,
           marketingConsent: data.marketingConsent,
+          accessToken,
+          paymentMethod: payment.method,
+          reservationExpiresAt: new Date(Date.now() + payment.reservationMinutes * 60 * 1000),
         })
         .returning();
 
@@ -192,21 +263,23 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
       });
 
       for (const line of quote.lines) {
-        await tx
-          .insert(inventory)
-          .values({
-            variantId: line.variantId,
-            warehouseCode: "MAIN",
-            onHand: 0,
-            reserved: line.quantity,
+        // Satır yukarıda kilitlendi ve stok doğrulandı; koşul ikinci bir güvenlik katmanıdır.
+        const reservedRows = await tx
+          .update(inventory)
+          .set({
+            reserved: sql`${inventory.reserved} + ${line.quantity}`,
+            updatedAt: new Date(),
           })
-          .onConflictDoUpdate({
-            target: [inventory.variantId, inventory.warehouseCode],
-            set: {
-              reserved: sql`${inventory.reserved} + ${line.quantity}`,
-              updatedAt: new Date(),
-            },
-          });
+          .where(
+            and(
+              eq(inventory.variantId, line.variantId),
+              sql`${inventory.onHand} - ${inventory.reserved} >= ${line.quantity}`,
+            ),
+          )
+          .returning({ id: inventory.id });
+        if (reservedRows.length === 0) {
+          throw new OrderError(`${line.productName} için yeterli stok yok.`);
+        }
 
         await tx.insert(stockMovements).values({
           variantId: line.variantId,
@@ -220,8 +293,8 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
 
       await tx.insert(payments).values({
         orderId: order.id,
-        provider: "mockpay",
-        providerRef: `mock_${orderNumber}`,
+        provider: payment.method,
+        providerRef: null,
         status: "pending",
         amount: quote.grandTotal,
       });
@@ -233,7 +306,12 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
           .where(eq(coupons.code, quote.couponCode));
       }
 
-      return { orderNumber, grandTotal: quote.grandTotal, customerId: customerId as string };
+      return {
+        orderNumber,
+        accessToken,
+        grandTotal: quote.grandTotal,
+        customerId: customerId as string,
+      };
     });
 
     await writeAudit({
@@ -248,11 +326,9 @@ export async function placeOrder(input: CheckoutInput): Promise<PlaceOrderResult
 
     return { ok: true, ...result };
   } catch (error) {
-    const message =
-      error instanceof OrderError
-        ? error.message
-        : "Sipariş oluşturulamadı. Lütfen tekrar deneyin.";
-    return { ok: false, message };
+    if (error instanceof OrderError) return { ok: false, message: error.message };
+    logger.error("checkout.place_order_failed", { error });
+    return { ok: false, message: "Sipariş oluşturulamadı. Lütfen tekrar deneyin." };
   }
 }
 
@@ -327,29 +403,28 @@ export async function applyPaymentEvent(input: PaymentEventInput) {
         .set({ status: "paid", paymentStatus: "paid", updatedAt: new Date() })
         .where(eq(orders.id, order.id));
 
-      for (const item of items) {
-        if (!item.variantId) continue;
-        await tx
-          .update(inventory)
-          .set({
-            onHand: sql`${inventory.onHand} - ${item.quantity}`,
-            reserved: sql`greatest(${inventory.reserved} - ${item.quantity}, 0)`,
-            updatedAt: new Date(),
-          })
-          .where(eq(inventory.variantId, item.variantId));
-        await tx.insert(stockMovements).values({
-          variantId: item.variantId,
-          type: "sale",
-          quantity: -item.quantity,
-          reference: order.orderNumber,
-          note: "Ödeme onaylandı, rezervasyon kesinleşti.",
-          actor: "payment-webhook",
+      if (order.status !== "pending_payment") {
+        // Rezervasyon süresi dolmuş/iptal edilmiş siparişe geç gelen ödeme: stok garanti
+        // edilemez. Otomatik onaylanmaz; operasyon ekibi iade veya yeniden işleme karar verir.
+        await writeAudit({
+          actorType: "webhook",
+          action: "payment.late_success",
+          entityType: "order",
+          entityId: order.orderNumber,
+          summary: `"${order.status}" durumundaki siparişe ödeme bildirimi geldi; manuel inceleme gerekli.`,
         });
+        return {
+          ok: false,
+          duplicate: false,
+          message: "Sipariş ödeme beklemiyor; manuel inceleme gerekli.",
+        };
       }
+
+      await commitReservedStock(tx, order.orderNumber, items, "payment-webhook");
 
       await tx
         .update(payments)
-        .set({ status: "succeeded", providerRef: `mock_${order.orderNumber}` })
+        .set({ status: "succeeded", providerRef: input.providerEventId })
         .where(eq(payments.orderId, order.id));
       await tx.insert(orderStatusHistory).values({
         orderId: order.id,
@@ -368,28 +443,20 @@ export async function applyPaymentEvent(input: PaymentEventInput) {
       return { ok: true, duplicate: false, message: "Ödeme onaylandı." };
     }
 
+    if (order.status !== "pending_payment") {
+      return { ok: true, duplicate: true, message: "Sipariş ödeme beklemiyor; bildirim yok sayıldı." };
+    }
     await tx
       .update(orders)
       .set({ status: "payment_failed", paymentStatus: "failed", updatedAt: new Date() })
       .where(eq(orders.id, order.id));
-    for (const item of items) {
-      if (!item.variantId) continue;
-      await tx
-        .update(inventory)
-        .set({
-          reserved: sql`greatest(${inventory.reserved} - ${item.quantity}, 0)`,
-          updatedAt: new Date(),
-        })
-        .where(eq(inventory.variantId, item.variantId));
-      await tx.insert(stockMovements).values({
-        variantId: item.variantId,
-        type: "reservation_release",
-        quantity: item.quantity,
-        reference: order.orderNumber,
-        note: "Ödeme başarısız, rezervasyon serbest bırakıldı.",
-        actor: "payment-webhook",
-      });
-    }
+    await releaseReservedStock(
+      tx,
+      order.orderNumber,
+      items,
+      "payment-webhook",
+      "Ödeme başarısız, rezervasyon serbest bırakıldı.",
+    );
     await tx.update(payments).set({ status: "failed" }).where(eq(payments.orderId, order.id));
     await tx.insert(orderStatusHistory).values({
       orderId: order.id,
@@ -456,17 +523,29 @@ export async function transitionOrder(input: {
             note: "Sipariş iptali, stok geri alındı.",
             actor: input.actorEmail,
           });
-        } else {
-          await tx
-            .update(inventory)
-            .set({
-              reserved: sql`greatest(${inventory.reserved} - ${item.quantity}, 0)`,
-              updatedAt: new Date(),
-            })
-            .where(eq(inventory.variantId, item.variantId));
         }
       }
+      // Rezervasyon yalnızca hâlâ ödeme beklenen siparişte tutulur; başarısız ödemede zaten çözülmüştür.
+      if (order.status === "pending_payment") {
+        await releaseReservedStock(
+          tx,
+          order.orderNumber,
+          items,
+          input.actorEmail,
+          "Sipariş iptali, rezervasyon serbest bırakıldı.",
+        );
+      }
     }
+
+    if (input.toStatus === "paid") {
+      // Elle tahsilat onayı (havale/EFT): webhook ile aynı stok kesinleştirme yolu kullanılır.
+      await commitReservedStock(tx, order.orderNumber, items, input.actorEmail);
+      await tx
+        .update(payments)
+        .set({ status: "succeeded", providerRef: `manual:${input.actorEmail}` })
+        .where(eq(payments.orderId, order.id));
+    }
+
 
     if (input.toStatus === "returned") {
       for (const item of items) {
@@ -487,19 +566,21 @@ export async function transitionOrder(input: {
     }
 
     if (input.toStatus === "shipped") {
+      const carrier = input.carrier?.trim();
+      const trackingNumber = input.trackingNumber?.trim();
+      if (!carrier || !trackingNumber) {
+        return { ok: false, message: "Kargoya verildi olarak işaretlemek için kargo firması ve takip numarası girin." };
+      }
       await tx.insert(shipments).values({
         orderId: order.id,
-        carrier: input.carrier || "Aras Kargo",
-        trackingNumber: input.trackingNumber || `TRK${Date.now().toString().slice(-9)}`,
+        carrier,
+        trackingNumber,
         status: "in_transit",
         shippedAt: new Date(),
       });
       await tx
         .update(orders)
-        .set({
-          shippingCarrier: input.carrier || "Aras Kargo",
-          trackingNumber: input.trackingNumber || `TRK${Date.now().toString().slice(-9)}`,
-        })
+        .set({ shippingCarrier: carrier, trackingNumber })
         .where(eq(orders.id, order.id));
     }
 
@@ -579,7 +660,10 @@ export async function createReturnRequest(input: {
   orderNumber: string;
   orderItemId?: string;
   reason: string;
-  actorEmail: string;
+  /** Oturum açmış müşterinin e-postası (varsa). */
+  customerEmail?: string;
+  /** Misafir erişimi için sipariş erişim anahtarı. */
+  accessToken?: string;
 }) {
   const orderRows = await db
     .select()
@@ -587,7 +671,23 @@ export async function createReturnRequest(input: {
     .where(eq(orders.orderNumber, input.orderNumber))
     .limit(1);
   const order = orderRows[0];
-  if (!order) return { ok: false, message: "Sipariş bulunamadı." };
+  const isOwner =
+    Boolean(order) &&
+    ((input.customerEmail !== undefined &&
+      input.customerEmail.toLowerCase() === order.email.toLowerCase()) ||
+      tokensMatch(order.accessToken, input.accessToken));
+  // Yetkisiz istekte siparişin var olup olmadığı açıklanmaz.
+  if (!order || !isOwner) return { ok: false, message: "Sipariş bulunamadı." };
+  const actorEmail = input.customerEmail ?? order.email;
+
+  if (input.orderItemId) {
+    const owned = await db
+      .select({ id: orderItems.id })
+      .from(orderItems)
+      .where(and(eq(orderItems.id, input.orderItemId), eq(orderItems.orderId, order.id)))
+      .limit(1);
+    if (owned.length === 0) return { ok: false, message: "Ürün bu siparişe ait değil." };
+  }
 
   const eligible = ["delivered", "shipped", "return_requested"] as const;
   if (!eligible.includes(order.status as (typeof eligible)[number])) {
@@ -614,13 +714,13 @@ export async function createReturnRequest(input: {
       fromStatus: order.status,
       toStatus: "return_requested",
       note: "Müşteri iade talebi oluşturdu. Hijyen ürünü istisnası hukuk kontrolüne tabidir.",
-      actor: input.actorEmail,
+      actor: actorEmail,
     });
   }
 
   await writeAudit({
     actorType: "customer",
-    actorEmail: input.actorEmail,
+    actorEmail,
     action: "return.requested",
     entityType: "order",
     entityId: order.orderNumber,
@@ -660,4 +760,66 @@ export async function getOrdersForAdmin(status?: string) {
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(orders.createdAt))
     .limit(80);
+}
+
+/**
+ * Rezervasyon süresi dolmuş, hâlâ ödeme bekleyen siparişleri iptal eder ve
+ * stoklarını serbest bırakır. Zamanlanmış görev tarafından çağrılır; tekrar
+ * çalıştırılması güvenlidir (her sipariş satır kilidi altında yeniden kontrol edilir).
+ */
+export async function expireStaleReservations(now = new Date()) {
+  const stale = await db
+    .select({ id: orders.id })
+    .from(orders)
+    .where(and(eq(orders.status, "pending_payment"), lt(orders.reservationExpiresAt, now)))
+    .limit(200);
+
+  const expired: string[] = [];
+  for (const candidate of stale) {
+    const orderNumber = await db.transaction(async (tx) => {
+      const rows = await tx.select().from(orders).where(eq(orders.id, candidate.id)).for("update");
+      const order = rows[0];
+      if (
+        !order ||
+        order.status !== "pending_payment" ||
+        !order.reservationExpiresAt ||
+        order.reservationExpiresAt >= now
+      ) {
+        return null;
+      }
+      const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id));
+      await releaseReservedStock(
+        tx,
+        order.orderNumber,
+        items,
+        "reservation-expiry",
+        "Ödeme süresi doldu, rezervasyon serbest bırakıldı.",
+      );
+      await tx
+        .update(orders)
+        .set({ status: "cancelled", paymentStatus: "expired", updatedAt: now })
+        .where(eq(orders.id, order.id));
+      await tx.update(payments).set({ status: "expired" }).where(eq(payments.orderId, order.id));
+      await tx.insert(orderStatusHistory).values({
+        orderId: order.id,
+        fromStatus: order.status,
+        toStatus: "cancelled",
+        note: "Ödeme süresi içinde tamamlanmadı.",
+        actor: "reservation-expiry",
+      });
+      return order.orderNumber;
+    });
+    if (orderNumber) expired.push(orderNumber);
+  }
+
+  if (expired.length > 0) {
+    await writeAudit({
+      actorType: "system",
+      action: "order.reservation_expired",
+      entityType: "order",
+      summary: `${expired.length} siparişin rezervasyon süresi doldu.`,
+      metadata: { orderNumbers: expired },
+    });
+  }
+  return expired;
 }

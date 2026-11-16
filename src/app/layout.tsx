@@ -7,7 +7,7 @@ const appUrl = process.env.APP_URL ?? "https://abaniclassic.com";
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "Abani Classic — Zamansız erkek iç giyim",
+    default: "Abani Classic — İç giyim, atlet ve çorap",
     template: "%s | Abani Classic",
   },
   description:
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "tr_TR",
     siteName: "Abani Classic",
-    title: "Abani Classic — Zamansız erkek iç giyim",
+    title: "Abani Classic — İç giyim, atlet ve çorap",
     description: "Uzun elyaf pamuk, ölçülü kalıplar ve sade renkler.",
     images: [{ url: "/images/hero.jpg", width: 1200, height: 630, alt: "Abani Classic koleksiyonu" }],
   },

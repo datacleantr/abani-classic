@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { CheckoutForm } from "@/components/checkout/checkout-form";
 import { getSessionIdentity } from "@/lib/auth";
+import { getPaymentConfig } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,10 @@ export const metadata: Metadata = {
 export default async function CheckoutPage() {
   const identity = await getSessionIdentity();
   const customer = identity?.type === "customer" ? identity.customer : null;
+  const config = getPaymentConfig();
+  const payment = config.ok
+    ? ({ available: true, method: config.method } as const)
+    : ({ available: false, message: config.message } as const);
 
   return (
     <div className="container-page py-10">
@@ -39,6 +44,7 @@ export default async function CheckoutPage() {
       ) : null}
 
       <CheckoutForm
+        payment={payment}
         prefill={{
           firstName: customer?.firstName ?? "",
           lastName: customer?.lastName ?? "",

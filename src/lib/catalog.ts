@@ -12,6 +12,9 @@ import {
   reviews,
 } from "@/db/schema";
 import { sortSizes } from "./format";
+import { DISPLAYABLE_IMAGE_RIGHTS } from "./image-rights";
+
+const displayableImage = inArray(productImages.rightsStatus, [...DISPLAYABLE_IMAGE_RIGHTS]);
 
 export type VariantView = {
   id: string;
@@ -55,6 +58,7 @@ export type ProductDetailView = ProductCardView & {
   description: string | null;
   fabric: string | null;
   care: string | null;
+  attributes: Record<string, string>;
   images: { url: string; alt: string | null }[];
   reviews: {
     id: string;
@@ -166,7 +170,7 @@ async function decorate(
         sortOrder: productImages.sortOrder,
       })
       .from(productImages)
-      .where(inArray(productImages.productId, ids))
+      .where(and(inArray(productImages.productId, ids), displayableImage))
       .orderBy(asc(productImages.sortOrder)),
     db
       .select({
@@ -362,6 +366,7 @@ export async function getProductDetail(slug: string): Promise<ProductDetailView 
       description: products.description,
       fabric: products.fabric,
       care: products.care,
+      attributes: products.attributes,
       categoryId: products.categoryId,
     })
     .from(products)
@@ -380,7 +385,7 @@ export async function getProductDetail(slug: string): Promise<ProductDetailView 
     db
       .select({ url: productImages.url, alt: productImages.alt })
       .from(productImages)
-      .where(eq(productImages.productId, row.id))
+      .where(and(eq(productImages.productId, row.id), displayableImage))
       .orderBy(asc(productImages.sortOrder)),
     db
       .select({
@@ -406,6 +411,7 @@ export async function getProductDetail(slug: string): Promise<ProductDetailView 
     description: row.description,
     fabric: row.fabric,
     care: row.care,
+    attributes: row.attributes ?? {},
     images: imageRows.length ? imageRows : [{ url: decorated.image, alt: decorated.name }],
     reviews: reviewRows,
     relatedProducts: related.items.filter((item) => item.id !== row.id).slice(0, 4),

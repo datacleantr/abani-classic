@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, eq, gt } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -5,6 +6,13 @@ import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { adminUsers, customers, sessions } from "@/db/schema";
 import { createSessionToken, hashPassword, verifyPassword } from "./password";
+import {
+  clearLoginFailures,
+  clientIp,
+  isLoginBlocked,
+  LOGIN_BLOCKED_MESSAGE,
+  recordLoginFailure,
+} from "./rate-limit";
 
 export const SESSION_COOKIE = "abani_session";
 const SESSION_TTL_DAYS = 14;
@@ -37,20 +45,25 @@ export type SessionIdentity =
   | { type: "customer"; customer: CustomerIdentity }
   | null;
 
+/** Veritabanında yalnızca belirtecin özeti saklanır; DB sızıntısı oturum çaldırmaz. */
+function hashSessionToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 async function createSession(subjectType: "admin" | "customer", subjectId: string) {
   const token = createSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
-  await db.insert(sessions).values({ token, subjectType, subjectId, expiresAt });
+  await db
+    .insert(sessions)
+    .values({ token: hashSessionToken(token), subjectType, subjectId, expiresAt });
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, cookieOptions(expiresAt));
 }
 
 /**
- * Production runs behind HTTPS. Preview environments embed the app in a
- * cross-origin iframe, where `SameSite=Lax` cookies are dropped by the browser;
- * `None` + `Secure` keeps sessions working there. On your own domain set
- * SESSION_COOKIE_SAMESITE=lax for the stricter default. Server actions keep
- * Next.js' built-in origin check regardless of this setting.
+ * Varsayılan `SameSite=Lax` (CSRF'e karşı güvenli taraf). Uygulama yalnızca
+ * çapraz kaynaklı bir iframe içinde önizleniyorsa SESSION_COOKIE_SAMESITE=none
+ * ile bilinçli olarak gevşetilebilir; kendi alan adınızda buna gerek yoktur.
  */
 function cookieOptions(expires: Date) {
   const isProduction = process.env.NODE_ENV === "production";
@@ -58,9 +71,7 @@ function cookieOptions(expires: Date) {
   const sameSite: "lax" | "strict" | "none" =
     configured === "lax" || configured === "strict" || configured === "none"
       ? configured
-      : isProduction
-        ? "none"
-        : "lax";
+      : "lax";
   return {
     httpOnly: true,
     sameSite,
@@ -79,7 +90,7 @@ export async function getSessionIdentity(): Promise<SessionIdentity> {
     .select({ session: sessions, admin: adminUsers })
     .from(sessions)
     .leftJoin(adminUsers, eq(adminUsers.id, sessions.subjectId))
-    .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())))
+    .where(and(eq(sessions.token, hashSessionToken(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
 
   const row = rows[0];
@@ -151,10 +162,19 @@ export function canIssueRefund(role: AdminRole) {
   return role === "super_admin" || role === "order_manager";
 }
 
+/** Havale/EFT tahsilatını elle onaylama: para hareketi olduğu için iade ile aynı yetki. */
+export function canConfirmPayment(role: AdminRole) {
+  return role === "super_admin" || role === "order_manager";
+}
+
 export type ActionResult = { ok: boolean; message: string };
 
 export async function loginAdmin(email: string, password: string): Promise<ActionResult> {
   const normalized = email.trim().toLowerCase();
+  const ip = await clientIp();
+  if (await isLoginBlocked("admin", normalized, ip)) {
+    return { ok: false, message: LOGIN_BLOCKED_MESSAGE };
+  }
   const rows = await db
     .select()
     .from(adminUsers)
@@ -162,19 +182,27 @@ export async function loginAdmin(email: string, password: string): Promise<Actio
     .limit(1);
   const admin = rows[0];
   if (!admin || !verifyPassword(password, admin.passwordHash)) {
+    await recordLoginFailure("admin", normalized, ip);
     return { ok: false, message: "E-posta veya parola hatalı." };
   }
+  await clearLoginFailures("admin", normalized);
   await createSession("admin", admin.id);
   return { ok: true, message: "Hoş geldiniz." };
 }
 
 export async function loginCustomer(email: string, password: string): Promise<ActionResult> {
   const normalized = email.trim().toLowerCase();
+  const ip = await clientIp();
+  if (await isLoginBlocked("customer", normalized, ip)) {
+    return { ok: false, message: LOGIN_BLOCKED_MESSAGE };
+  }
   const rows = await db.select().from(customers).where(eq(customers.email, normalized)).limit(1);
   const customer = rows[0];
   if (!customer || !verifyPassword(password, customer.passwordHash)) {
+    await recordLoginFailure("customer", normalized, ip);
     return { ok: false, message: "E-posta veya parola hatalı." };
   }
+  await clearLoginFailures("customer", normalized);
   await createSession("customer", customer.id);
   return { ok: true, message: "Hoş geldiniz." };
 }
@@ -220,7 +248,7 @@ export async function logout(): Promise<void> {
   const jar = await cookies();
   const token = jar.get(SESSION_COOKIE)?.value;
   if (token) {
-    await db.delete(sessions).where(eq(sessions.token, token));
+    await db.delete(sessions).where(eq(sessions.token, hashSessionToken(token)));
   }
   jar.set(SESSION_COOKIE, "", { ...cookieOptions(new Date(0)), maxAge: 0 });
 }

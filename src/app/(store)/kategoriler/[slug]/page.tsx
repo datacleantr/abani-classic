@@ -5,6 +5,8 @@ import { CatalogView } from "@/components/store/catalog-view";
 import { getCategoryBySlug, listProducts } from "@/lib/catalog";
 import { parseListSearch, type RawParams } from "@/lib/list-params";
 
+import { jsonLd } from "@/lib/format";
+
 export const dynamic = "force-dynamic";
 
 type PageProps = {
@@ -55,7 +57,7 @@ export default async function CategoryPage({ params, searchParams }: PageProps) 
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbSchema) }}
       />
       <CatalogView
         title={category.name}

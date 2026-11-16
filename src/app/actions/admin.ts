@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { writeAudit } from "@/lib/audit";
 import {
+  canConfirmPayment,
   canIssueRefund,
   canManageCatalog,
   canManageImports,
@@ -322,6 +323,9 @@ export async function transitionOrderAction(
   if (!orderId || !toStatus) return fail("Durum seçin.");
   if (["refunded", "partially_refunded"].includes(toStatus) && !canIssueRefund(admin.role)) {
     return fail("İade işlemi için yetkiniz yok.");
+  }
+  if (toStatus === "paid" && !canConfirmPayment(admin.role)) {
+    return fail("Tahsilat onayı için yetkiniz yok.");
   }
 
   const result = await transitionOrder({

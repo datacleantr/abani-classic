@@ -1,45 +1,62 @@
-# Abani Classic — Premium D2C E-Ticaret Platformu
+# Abani Classic — D2C E-Ticaret Platformu
 
-Next.js (App Router) + PostgreSQL + Drizzle ORM ile geliştirilmiş, Türkçe, modüler monolith
-e-ticaret uygulaması. Ürün kataloğu doğruluğu, güvenli sipariş akışı ve operasyonel
-yönetilebilirlik önceliklidir.
+Next.js 16 (App Router) + React 19 + PostgreSQL + Drizzle ORM ile geliştirilen, Türkçe,
+modüler monolith e-ticaret uygulaması.
 
-## Çalıştırma
+> **Durum:** geliştirme aşamasında, canlıya hazır değil. Ne var/ne eksik: `docs/GAP_REPORT.md`.
+> Sizden beklenen kararlar: `docs/OPEN_DECISIONS.md`. Ajan çalışma kuralları: `CLAUDE.md`.
+
+## Kurulum
 
 ```bash
 npm install
-npx drizzle-kit push        # şemayı uygula
-npx tsx src/db/seed.ts      # demo katalog + operasyon verisi (--force ile sıfırlar)
-npm run dev
+cp .env.example .env          # DATABASE_URL değerini girin
+npm run db:migrate            # şemayı sürüm kontrollü migration'larla kur
+npm run dev                   # http://localhost:3000
 ```
 
-## Demo hesaplar
+Gerçek katalog (Pazarama mağaza ilanları):
 
-| Rol | E-posta | Parola |
-|-----|---------|--------|
-| Süper yönetici | owner@abaniclassic.com | Abani2026! |
-| Katalog yöneticisi | katalog@abaniclassic.com | Katalog2026! |
-| Sipariş yöneticisi | operasyon@abaniclassic.com | Operasyon2026! |
-| Müşteri | ayse@example.com | Musteri2026! |
+```bash
+npm run source:pazarama:fetch                    # ilanları topla (ham kayıt)
+npm run source:pazarama:import -- --dry-run      # ne oluşacağını gör
+npm run source:pazarama:import                   # onay bekleyen aday olarak aktar
+npm run catalog:publish -- --source=pazarama     # ön izleme; yayın için --confirm
+```
 
-Kuponlar: `ABANI10` (%10, min 750 TL), `HOSGELDIN` (100 TL, min 500 TL),
-`KARGOBENDEN` (ücretsiz kargo, min 1.000 TL).
+İlk yönetici: `npm run admin:create`. Demo verisi (`npm run db:seed`) yalnızca geliştirme
+içindir; sahte ürün/sipariş ve bilinen parolalı hesaplar oluşturur, üretimde çalışmaz.
+
+## Kalite kapıları
+
+```bash
+npm run check               # typecheck + lint + birim testleri
+npm run test:integration    # gerçek PostgreSQL'e karşı sipariş/stok/ödeme testleri
+npm run build
+```
+
+Entegrasyon testleri `DATABASE_URL`'deki veritabanının yanına tek kullanımlık `<ad>_test`
+veritabanı kurar; geliştirme verisine dokunmaz.
 
 ## Mimari
 
-- `src/db/schema.ts` — katalog, stok, sipariş, ödeme, import, RBAC ve audit tabloları.
-- `src/lib/catalog.ts` — yayınlanmış ürün sorguları, filtre/facet ve detay toplama.
-- `src/lib/pricing.ts` — sunucu tarafı fiyat/kupon/kargo hesabı (istemci fiyatına güvenilmez).
-- `src/lib/orders.ts` — transaction içinde rezervasyon, idempotent ödeme olayı, durum geçişleri.
-- `src/lib/imports.ts` — CSV parse, doğrulama, eşleştirme skoru, dry-run ve uygulama.
-- `src/lib/auth.ts` — DB destekli oturum, scrypt parola, rol yetkileri.
-- `src/app/(store)` — vitrin; `src/app/admin/(panel)` — yönetim paneli.
-- `src/app/actions` — server action'lar (Zod doğrulama + RBAC + audit).
+- `src/app/(store)` vitrin · `src/app/admin/(panel)` yönetim paneli · `src/app/api` uçlar
+- `src/app/actions` server action'lar (Zod doğrulama + yetki + audit)
+- `src/lib` iş mantığı: `orders`, `pricing`, `payments`, `auth`, `catalog`, `imports`,
+  `sources/pazarama`, `rate-limit`, `env`, `logger`
+- `src/db/schema.ts` şema · `drizzle/` migration'lar · `tests/` birim ve entegrasyon testleri
 
-## Güvenlik notları
+## Ödeme
 
-- Kart verisi hiçbir tabloya yazılmaz; ödeme sağlayıcısı sandbox adapter ile simüle edilir.
-- `/api/payments/webhook` HMAC imza doğrular; `payment_events` tablosundaki benzersiz olay
-  kimliği sayesinde aynı bildirim iki kez stok düşmez.
-- Fiyat, stok ve kupon kuralları yalnızca sunucuda hesaplanır.
-- Yasal metinler taslaktır; yayına almadan önce hukuk kontrolü gerekir (bkz. `docs/OPEN_DECISIONS.md`).
+| `PAYMENT_PROVIDER` | Davranış |
+| --- | --- |
+| boş / `sandbox` | Yalnızca geliştirme: ödeme simülasyon ekranı. Üretimde checkout kapalıdır. |
+| `bank_transfer` | Havale/EFT: sipariş ödeme bekler, yetkili yönetici tahsilatı panelden onaylar. |
+| `iyzico` / `paytr` / `param` | Adapter henüz yok; sözleşme ve resmi API dokümanı sonrası yazılacak. |
+
+Sipariş hiçbir koşulda checkout isteğiyle "ödendi" olmaz. Kart verisi saklanmaz.
+
+## Zamanlanmış görev
+
+`GET /api/cron/expire-reservations` (`Authorization: Bearer $CRON_SECRET`) süresi dolan stok
+rezervasyonlarını serbest bırakır. `vercel.json` içinde 10 dakikada bir tanımlıdır.

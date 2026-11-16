@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -68,6 +70,8 @@ export const products = pgTable(
     isFeatured: boolean("is_featured").notNull().default(false),
     isNew: boolean("is_new").notNull().default(false),
     sourceKey: varchar("source_key", { length: 40 }),
+    /** Esnek ürün özellikleri (yaka tipi, kumaş tipi vb.) — kaynak ilandan gelen etiket/değer çiftleri. */
+    attributes: jsonb("attributes").$type<Record<string, string>>(),
     publishedAt: timestamp("published_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -90,7 +94,9 @@ export const productImages = pgTable(
     url: text("url").notNull(),
     alt: varchar("alt", { length: 240 }),
     sortOrder: integer("sort_order").notNull().default(0),
+    /** authorized | seller_listing | unknown | restricted — yalnızca ilk ikisi vitrinde gösterilir. */
     rightsStatus: varchar("rights_status", { length: 24 }).notNull().default("authorized"),
+    sourceUrl: text("source_url"),
   },
   (t) => [index("product_images_product_idx").on(t.productId)],
 );
@@ -130,7 +136,12 @@ export const inventory = pgTable(
     reorderLevel: integer("reorder_level").notNull().default(5),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("inventory_variant_warehouse_uq").on(t.variantId, t.warehouseCode)],
+  (t) => [
+    uniqueIndex("inventory_variant_warehouse_uq").on(t.variantId, t.warehouseCode),
+    check("inventory_on_hand_nonneg", sql`${t.onHand} >= 0`),
+    check("inventory_reserved_nonneg", sql`${t.reserved} >= 0`),
+    check("inventory_reserved_lte_on_hand", sql`${t.reserved} <= ${t.onHand}`),
+  ],
 );
 
 export const stockMovements = pgTable(
@@ -158,6 +169,7 @@ export const marketplaceListings = pgTable(
     sourceKey: varchar("source_key", { length: 40 }).notNull(),
     sourceListingId: varchar("source_listing_id", { length: 120 }).notNull(),
     sourceSku: varchar("source_sku", { length: 100 }),
+    sourceUrl: text("source_url"),
     productId: uuid("product_id").references(() => products.id),
     variantId: uuid("variant_id").references(() => productVariants.id),
     sourcePriceMinor: integer("source_price_minor"),
@@ -267,6 +279,13 @@ export const orders = pgTable(
     shippingCarrier: varchar("shipping_carrier", { length: 80 }),
     trackingNumber: varchar("tracking_number", { length: 80 }),
     marketingConsent: boolean("marketing_consent").notNull().default(false),
+    /** Tahmin edilemez erişim anahtarı: misafir sipariş sayfası yalnızca bununla açılır. */
+    accessToken: varchar("access_token", { length: 64 })
+      .notNull()
+      .default(sql`replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '')`),
+    paymentMethod: varchar("payment_method", { length: 40 }).notNull().default("sandbox"),
+    /** Ödeme bu zamana kadar gelmezse stok rezervasyonu serbest bırakılır. */
+    reservationExpiresAt: timestamp("reservation_expires_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -298,7 +317,10 @@ export const orderItems = pgTable(
     lineTotal: integer("line_total").notNull(),
     currency: varchar("currency", { length: 3 }).notNull().default("TRY"),
   },
-  (t) => [index("order_items_order_idx").on(t.orderId)],
+  (t) => [
+    index("order_items_order_idx").on(t.orderId),
+    check("order_items_quantity_positive", sql`${t.quantity} > 0`),
+  ],
 );
 
 export const orderStatusHistory = pgTable(
@@ -491,4 +513,46 @@ export const newsletterSubscribers = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("newsletter_email_uq").on(t.email)],
+);
+
+/* -------------------------------------------------------------------------- */
+/* Raw marketplace source records                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Pazaryerinden alınan ham ilan kaydı. Değiştirilmeden saklanır; katalog
+ * kaydıyla ilişkisi `marketplace_listings` üzerinden kurulur.
+ */
+export const sourceProducts = pgTable(
+  "source_products",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    sourceKey: varchar("source_key", { length: 40 }).notNull(),
+    sourceListingId: varchar("source_listing_id", { length: 120 }).notNull(),
+    sourceUrl: text("source_url"),
+    title: varchar("title", { length: 300 }),
+    brandName: varchar("brand_name", { length: 160 }),
+    parserVersion: varchar("parser_version", { length: 40 }).notNull(),
+    contentHash: varchar("content_hash", { length: 64 }).notNull(),
+    payload: jsonb("payload").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("source_products_uq").on(t.sourceKey, t.sourceListingId)],
+);
+
+/* -------------------------------------------------------------------------- */
+/* Security                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/** Başarısız giriş denemeleri — hesap ve IP bazlı hız sınırlama için. */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bucket: varchar("bucket", { length: 200 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_attempts_bucket_idx").on(t.bucket, t.createdAt)],
 );
