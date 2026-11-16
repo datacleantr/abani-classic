@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ProductCard } from "@/components/store/product-card";
 import { getHomeData } from "@/lib/catalog";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, jsonLd } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,7 @@ export default async function HomePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(organizationSchema) }}
       />
 
       <section className="border-b border-line/70 bg-ivory">

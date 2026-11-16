@@ -5,7 +5,8 @@ import { notFound } from "next/navigation";
 import { ReturnRequestForm } from "@/components/store/return-request-form";
 import { getSessionIdentity } from "@/lib/auth";
 import { formatDate, formatMoney, ORDER_STATUS_LABELS, ORDER_STATUS_TONE } from "@/lib/format";
-import { getOrderByNumber } from "@/lib/orders";
+import { getOrderByNumber, tokensMatch } from "@/lib/orders";
+import { getBankTransferDetails } from "@/lib/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -16,31 +17,31 @@ export const metadata: Metadata = {
 
 type PageProps = {
   params: Promise<{ orderNumber: string }>;
-  searchParams: Promise<{ yeni?: string }>;
+  searchParams: Promise<{ yeni?: string; t?: string }>;
 };
 
 const statusSteps = ["pending_payment", "paid", "processing", "packed", "shipped", "delivered"];
 
-function maskEmail(email: string) {
-  const [name, domain] = email.split("@");
-  if (!domain) return "***";
-  return `${name.slice(0, 2)}***@${domain}`;
-}
-
-function maskPhone(phone: string) {
-  return `${phone.slice(0, 4)} *** ** ${phone.slice(-2)}`;
-}
 
 export default async function OrderDetailPage({ params, searchParams }: PageProps) {
   const { orderNumber } = await params;
-  const { yeni } = await searchParams;
+  const { yeni, t } = await searchParams;
   const order = await getOrderByNumber(orderNumber);
   if (!order) notFound();
 
+  // Sipariş numarası tahmin edilebilir; sayfa yalnızca sipariş sahibine (oturum),
+  // yöneticiye veya tahmin edilemez erişim anahtarını taşıyan bağlantıya açılır.
   const identity = await getSessionIdentity();
+  const hasToken = tokensMatch(order.accessToken, t);
   const isOwner =
     (identity?.type === "customer" && identity.customer.email.toLowerCase() === order.email.toLowerCase()) ||
     identity?.type === "admin";
+  if (!isOwner && !hasToken) notFound();
+
+  const bank =
+    order.paymentMethod === "bank_transfer" && order.status === "pending_payment"
+      ? getBankTransferDetails()
+      : null;
 
   const isFailure = order.paymentStatus === "failed";
   const currentIndex = statusSteps.indexOf(order.status);
@@ -56,6 +57,30 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
             Ödeme sağlayıcı bildirimi doğrulandı ve stok kesinleşti. Sipariş numaranız:{" "}
             <strong>{order.orderNumber}</strong>
           </p>
+        </div>
+      ) : null}
+
+      {bank ? (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="eyebrow text-amber-800">Ödeme bekleniyor · Havale / EFT</p>
+          <p className="mt-1 text-sm text-amber-900">
+            Siparişiniz alındı ve ürünleriniz sizin için ayrıldı. Aşağıdaki hesaba{" "}
+            <strong>{formatMoney(order.grandTotal)}</strong> gönderin ve açıklamaya sipariş numaranızı
+            yazın: <strong>{order.orderNumber}</strong>
+          </p>
+          <dl className="mt-3 space-y-1 text-sm text-amber-900">
+            <div className="flex gap-2"><dt className="w-28 shrink-0">Alıcı</dt><dd>{bank.accountName}</dd></div>
+            {bank.bankName ? (
+              <div className="flex gap-2"><dt className="w-28 shrink-0">Banka</dt><dd>{bank.bankName}</dd></div>
+            ) : null}
+            <div className="flex gap-2"><dt className="w-28 shrink-0">IBAN</dt><dd className="break-all font-mono">{bank.iban}</dd></div>
+          </dl>
+          {order.reservationExpiresAt ? (
+            <p className="mt-3 text-xs text-amber-800">
+              Ödeme {formatDate(order.reservationExpiresAt, true)} tarihine kadar ulaşmazsa sipariş
+              otomatik iptal edilir.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -171,6 +196,7 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
               </p>
               <ReturnRequestForm
                 orderNumber={order.orderNumber}
+                accessToken={hasToken ? t : undefined}
                 items={order.items.map((item) => ({
                   id: item.id,
                   productName: item.productName,
@@ -186,13 +212,12 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
             <h3 className="text-lg">Teslimat</h3>
             <p className="mt-2 text-charcoal">{order.firstName} {order.lastName}</p>
             <p className="text-xs leading-relaxed text-muted">
-              {isOwner ? order.addressLine : "Adres bilgisi gizlendi"}
+              {order.addressLine}
               <br />
               {order.district} / {order.city} {order.postalCode ?? ""}
             </p>
             <p className="mt-2 text-xs text-muted">
-              {isOwner ? order.email : maskEmail(order.email)} ·{" "}
-              {isOwner ? order.phone : maskPhone(order.phone)}
+              {order.email} · {order.phone}
             </p>
             {order.note ? <p className="mt-2 text-xs text-muted">Not: {order.note}</p> : null}
           </section>
@@ -202,7 +227,11 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
             <dl className="mt-2 space-y-1.5 text-xs text-muted">
               <div className="flex justify-between">
                 <dt>Ödeme</dt>
-                <dd>{order.paymentStatus === "paid" ? "Ödendi" : order.paymentStatus === "pending" ? "Bekliyor" : "Başarısız"}</dd>
+                <dd>
+                  {{ paid: "Ödendi", pending: "Bekliyor", failed: "Başarısız", expired: "Süresi doldu", refunded: "İade edildi" }[
+                    order.paymentStatus
+                  ] ?? order.paymentStatus}
+                </dd>
               </div>
               <div className="flex justify-between">
                 <dt>Taşıyıcı</dt>

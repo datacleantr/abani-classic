@@ -22,7 +22,6 @@ export const checkoutSchema = z.object({
   note: z.string().trim().max(500).optional().or(z.literal("")),
   couponCode: z.string().trim().max(40).optional().or(z.literal("")),
   marketingConsent: z.boolean().default(false),
-  paymentMode: z.enum(["success", "failure"]).default("success"),
   items: z.array(cartItemSchema).min(1, "Sepetiniz boş."),
 });
 
@@ -30,10 +29,11 @@ export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 export const loginSchema = z.object({
   email: z.string().trim().email("Geçerli bir e-posta girin."),
-  password: z.string().min(6, "Parola en az 6 karakter olmalı."),
+  password: z.string().min(6, "Parola en az 6 karakter olmalı.").max(200),
 });
 
 export const registerSchema = loginSchema.extend({
+  password: z.string().min(10, "Parola en az 10 karakter olmalı.").max(200),
   firstName: z.string().trim().min(2, "Ad girin.").max(80),
   lastName: z.string().trim().min(2, "Soyad girin.").max(80),
   phone: z.string().trim().max(20).optional().or(z.literal("")),
@@ -65,6 +65,7 @@ export const stockAdjustSchema = z.object({
 export const returnRequestSchema = z.object({
   orderNumber: z.string().trim().min(3).max(32),
   orderItemId: z.string().uuid().optional().or(z.literal("")),
+  accessToken: z.string().trim().max(64).optional().or(z.literal("")),
   reason: z.string().trim().min(10, "Lütfen iade nedeninizi yazın.").max(1000),
 });
 

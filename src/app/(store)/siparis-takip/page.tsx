@@ -65,7 +65,10 @@ export default async function OrderTrackingPage({ searchParams }: PageProps) {
               {order.shippingCarrier} · Takip no: {order.trackingNumber}
             </p>
           ) : null}
-          <Link href={`/siparis/${order.orderNumber}`} className="btn-outline mt-4">
+          <Link
+            href={`/siparis/${order.orderNumber}?t=${encodeURIComponent(order.accessToken)}`}
+            className="btn-outline mt-4"
+          >
             Sipariş detayı
           </Link>
         </div>

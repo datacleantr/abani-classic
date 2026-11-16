@@ -1,39 +1,55 @@
 # Abani Classic — Açık Kararlar
 
-Bu dosya, canlıya geçiş öncesi işletme tarafından onaylanması gereken kararları listeler.
-Uygulama bu değerler eksikken çalışır, ancak üretim ortamında aşağıdaki maddeler
-tamamlanmadan yayına alınmamalıdır.
+Canlıya geçmeden önce işletme tarafından verilmesi gereken kararlar ve sağlanması gereken
+girdiler. Kodlama ajanı bu değerleri uydurmaz; eksikken ilgili özellik kapalı kalır.
+Teknik durum için `docs/GAP_REPORT.md`.
 
-| # | Konu | Durum | Not |
-|---|------|-------|-----|
-| 1 | Resmi alan adı (`APP_URL`) | Açık | Kanonik URL ve sitemap bu değere bağlı. |
-| 2 | Logo ve marka varlıkları | Açık | Şu an tipografik logotype kullanılıyor. |
-| 3 | Şirket ticari unvanı, MERSİS, vergi bilgileri | Açık | Yasal metinlerde ve fatura akışında gerekli. |
-| 4 | Pazaryeri ürün export dosyaları | Açık | Gerçek Trendyol/Hepsiburada/Pazarama/n11/Amazon dosyaları bekleniyor. |
-| 5 | SKU / barkod ana listesi | Açık | Eşleştirmede birincil sinyal. |
-| 6 | Gerçek depo stok kaynağı | Açık | Tek doğruluk kaynağı seçilmeli (depo, ERP veya pazaryeri). |
-| 7 | Maliyet ve satış fiyatı politikası | Açık | Kâr raporu bu veri olmadan açılmaz. |
-| 8 | Ödeme sağlayıcısı (iyzico / PayTR / Param) | Açık | Sandbox adapter hazır; gerçek adapter sözleşme sonrası. |
-| 9 | Kargo firması ve API erişimi | Açık | `Shipment` kaydı manuel takip numarası ile çalışıyor. |
-| 10 | E-posta gönderim domain'i | Açık | Şu an e-posta kuyruğu simüle ediliyor. |
-| 11 | Görsel ve açıklama kullanım hakları | Açık | Hak durumu `product_images.rights_status` alanında izleniyor. |
-| 12 | İade/cayma prosedürü ve hijyen istisnası | Açık | Hukuk kontrolü gerekli; sistem otomatik ret vermiyor. |
-| 13 | KVKK / ETBİS / İYS kayıtları | Açık | Yasal metinler taslak. |
-| 14 | Background job/queue sağlayıcısı | Açık | Uzun import işleri HTTP içinde çalıştırılmamalı. |
+## Sizden beklenen girdiler
+
+| # | Konu | Durum | Neden gerekli / şu an ne oluyor |
+| --- | --- | --- | --- |
+| 1 | Resmi alan adı (`APP_URL`) | Açık | Kanonik URL, sitemap, e-posta bağlantıları. |
+| 2 | Logo ve marka varlıkları | Açık | Şu an tipografik logotype kullanılıyor; renkler logoya göre kesinleşmeli. |
+| 3 | Ticari unvan, MERSİS, vergi dairesi/no, adres, iletişim | Açık | Yasal metinler ve footer. Şu an yer tutucu. |
+| 4 | Trendyol / Hepsiburada / n11 / Amazon satıcı paneli ürün dışa aktarımları | Açık | Bu siteler otomatik erişimi engelliyor. CSV dosyaları `/admin/ice-aktarim` ile yüklenir. |
+| 5 | SKU / barkod ana listesi | Açık | Şu an SKU'lar geçici (`PZ-<Pazarama ilan kodu>`); yalnızca 36 varyantta barkod var. |
+| 6 | **Gerçek depo stok dosyası** ve tek doğruluk kaynağı | Açık | Yerel veritabanındaki stok (varyant başına 25) deneme değeridir. Üretimde stok 0 açılır. |
+| 7 | **Satış fiyatı politikası** ve maliyetler | Açık | Fiyatlar Pazarama vitrin fiyatından *öneri* olarak kopyalandı. Kâr raporu maliyet olmadan açılmaz. |
+| 8 | Ödeme sağlayıcısı (iyzico / PayTR / Param) | Açık | Kart ödemesi yok. Hazır olan: havale/EFT (`PAYMENT_PROVIDER=bank_transfer` + IBAN). |
+| 9 | Kargo firması, anlaşma ve API erişimi | Açık | Takip numarası panelden elle giriliyor. |
+| 10 | E-posta gönderim alan adı ve sağlayıcı | Açık | **Hiç e-posta gönderilmiyor** (sipariş onayı, kargo bildirimi, şifre sıfırlama yok). |
+| 11 | **Ürün görseli dosyaları ve kullanım hakkı teyidi** | Açık | Görseller Pazarama adresinden gösteriliyor (kopyalanamadı). Canlı için özgün dosyalar gerekli. Üretici markalara (Tutku, Berrak, Anıt…) ait görsellerin kendi sitenizde kullanım izni teyit edilmeli. |
+| 12 | İade/cayma prosedürü, iç giyimde hijyen istisnası | Açık | Hukuk kontrolü gerekli. Sistem otomatik ret vermiyor. |
+| 13 | KVKK aydınlatma, ETBİS, İYS, mesafeli satış metinleri | Açık | `src/lib/legal.ts` içindeki metinler taslaktır; hukuk onayı olmadan yayınlanmamalı. |
+| 14 | KDV oranları | Açık | Tüm ürünlerde %10 varsayıldı; mali müşavir teyidi gerekli. |
+| 15 | Kargo ücreti ve ücretsiz kargo eşiği | Açık | Kodda 49,90 TL ve 1.000 TL (`src/lib/pricing.ts`) — önceki taslaktan kalma, onaylanmadı. |
+| 16 | Vitrindeki vaatler | Açık | "14 gün iade", "1-2 iş günü kargo", "%100 pamuk / modal", "Türkiye üretimi" gibi ifadeler önceki taslaktan kalma ve doğrulanmadı. Onaylamadıklarınız kaldırılmalı. |
+| 17 | Ürün açıklamaları | Açık | Kaynakta metin açıklama yok; uydurulmadı. Özellik tablosu gösteriliyor. |
+| 18 | Kadın ürünleri ve çocuk ürünü vitrinde olacak mı? | Açık | Pazarama mağazasında var; 4 kadın kategorisi eklendi. Marka konumlandırma kararı. |
+| 19 | Üretici markaların yetkili satıcılığı | Açık | 12+ marka listeleniyor; kendi sitenizde marka adı/logo kullanımı için yetki durumu. |
+| 20 | Barındırma, veritabanı, görsel depolama, arka plan işi sağlayıcısı | Açık | `vercel.json` cron tanımı hazır; ortamlar kurulmadı. |
+| 21 | Yedekleme hedefleri (RPO/RTO) | Açık | Yedekleme ve geri yükleme testi yapılmadı. |
 
 ## Uygulanan kararlar
 
 - **ADR-001** Modüler monolith (Next.js App Router, route groups + servis katmanı).
-- **ADR-002** PostgreSQL + Drizzle ORM; para alanları integer kuruş.
-- **ADR-005** Katalog kaynağı: yetkili export/CSV, ham veri saklanır.
-- **ADR-006** Ürün eşleştirme: açıklanabilir skor + insan onayı; ≥95 güçlü aday, 75–94 inceleme, <75 yeni.
-- **ADR-010** Görsel hakları doğrulanmadan yayın yok.
-- **ADR-011** RBAC sunucu tarafında uygulanır; tüm kritik işlemler audit log yazar.
-- **ADR-013** Ödeme: imzalı webhook + idempotency; kart verisi saklanmaz.
-- **ADR-014** Stok: checkout'ta süreli rezervasyon, ödeme onayı ile kesinleşir.
+- **ADR-002/003** PostgreSQL + Drizzle ORM; para alanları integer kuruş; migration'lar sürüm kontrollü.
+- **ADR-005** Katalog kaynağı: herkese açık ve robots.txt'in izin verdiği kendi mağaza sayfaları
+  veya satıcı paneli dışa aktarımı. Erişim korumaları (403, CAPTCHA) aşılmaz.
+- **ADR-006** Eşleştirme insan onaylıdır; ürünler `review` durumunda oluşur, yayın ayrı onaydır.
+- **ADR-010** Vitrin yalnızca `authorized` ve `seller_listing` görselleri gösterir.
+- **ADR-011** RBAC sunucu tarafında; kritik işlemler audit log yazar. MFA henüz yok.
+- **ADR-013** Ödeme: sipariş yalnızca imzalı bildirim, sandbox adımı (yalnızca geliştirme) veya
+  yetkili yöneticinin havale onayı ile ödenmiş olur. Kart verisi saklanmaz.
+- **ADR-014** Stok: checkout'ta süreli rezervasyon (kart 30 dk, havale 3 gün), ödemeyle
+  kesinleşir, süre dolunca zamanlanmış görev serbest bırakır.
+- **ADR-015** Sipariş sayfası erişimi: sahip oturumu, yönetici veya tahmin edilemez erişim anahtarı.
 
-## Ortam değişkenleri
+## Yerel geliştirme veritabanı hakkında
 
-`APP_URL`, `DATABASE_URL`, `SESSION_SECRET`, `PAYMENT_WEBHOOK_SECRET`,
-`RESEND_API_KEY`, `EMAIL_FROM`, `SHIPPING_API_KEY`, `GOOGLE_ANALYTICS_ID`.
-Değerler yalnızca ortam panelinde tutulur; repoya yazılmaz.
+Vitrinin gerçek veriyle değerlendirilebilmesi için yerel veritabanında şu adımlar atıldı;
+bunlar **üretim için verilmiş karar değildir**:
+
+- 295 Pazarama ürünü önerilen fiyatlarla yayınlandı (`audit_logs`: `catalog.bulk_publish`).
+- Varyantlara 25'er adet deneme stoğu girildi.
+- Önceki 14 uydurma demo ürün arşive alındı (silinmedi).

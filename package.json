@@ -1,17 +1,28 @@
 {
-  "name": "nextjs-postgresql-template",
+  "name": "abani-classic",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "check": "npm run typecheck && npm run lint && npm run test",
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "db:seed": "tsx src/db/seed.ts",
+    "source:pazarama:fetch": "tsx scripts/sources/pazarama-fetch.ts",
+    "source:pazarama:import": "tsx scripts/sources/pazarama-import.ts",
+    "catalog:publish": "tsx scripts/catalog-publish.ts",
+    "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "dotenv": "17.3.1",
     "drizzle-orm": "0.45.2",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "pg": "8.20.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
@@ -26,9 +37,10 @@
     "@types/react-dom": "19.2.3",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.6",
     "postcss": "8.5.23",
     "tailwindcss": "4.1.17",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
   }
 }

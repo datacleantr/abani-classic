@@ -1,8 +1,14 @@
-import { applyPaymentEvent, placeOrder } from "@/lib/orders";
+import { placeOrder } from "@/lib/orders";
+import { getPaymentConfig } from "@/lib/payments";
 import { checkoutSchema } from "@/lib/schemas";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Sipariş oluşturur ve stoğu süreli rezerve eder. Sipariş burada ASLA "ödendi"
+ * yapılmaz: ödeme durumu yalnızca imzalı sağlayıcı bildirimi (webhook), sandbox
+ * onay adımı veya yetkili yöneticinin havale onayı ile değişir.
+ */
 export async function POST(request: Request) {
   let payload: unknown;
   try {
@@ -23,26 +29,27 @@ export async function POST(request: Request) {
     );
   }
 
-  const order = await placeOrder(parsed.data);
+  const payment = getPaymentConfig();
+  if (!payment.ok) {
+    return Response.json({ ok: false, message: payment.message }, { status: 503 });
+  }
+
+  const order = await placeOrder(parsed.data, payment);
   if (!order.ok) {
     return Response.json({ ok: false, message: order.message }, { status: 409 });
   }
 
-  // Sandbox payment provider: in production this callback arrives from the PSP and
-  // is verified through /api/payments/webhook. The same idempotent handler is used.
-  const payment = await applyPaymentEvent({
-    providerEventId: `mock_evt_${order.orderNumber}`,
-    orderNumber: order.orderNumber,
-    type: parsed.data.paymentMode === "failure" ? "failed" : "succeeded",
-    amount: order.grandTotal,
-    signatureValid: true,
-  });
+  const token = encodeURIComponent(order.accessToken);
+  const next =
+    payment.method === "sandbox"
+      ? `/odeme/sandbox/${order.orderNumber}?t=${token}`
+      : `/siparis/${order.orderNumber}?t=${token}&yeni=1`;
 
   return Response.json({
     ok: true,
     orderNumber: order.orderNumber,
     grandTotal: order.grandTotal,
-    paymentStatus: payment.ok ? (parsed.data.paymentMode === "failure" ? "failed" : "paid") : "pending",
-    paymentMessage: payment.message,
+    paymentMethod: payment.method,
+    next,
   });
 }

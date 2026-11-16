@@ -7,9 +7,11 @@ import type { ActionResult } from "@/lib/auth";
 
 export function ReturnRequestForm({
   orderNumber,
+  accessToken,
   items,
 }: {
   orderNumber: string;
+  accessToken?: string;
   items: { id: string; productName: string; variantLabel: string | null }[];
 }) {
   const [state, formAction, pending] = useActionState<ActionResult | null, FormData>(
@@ -20,6 +22,7 @@ export function ReturnRequestForm({
   return (
     <form action={formAction} className="mt-4 space-y-3">
       <input type="hidden" name="orderNumber" value={orderNumber} />
+      {accessToken ? <input type="hidden" name="accessToken" value={accessToken} /> : null}
       <div>
         <label htmlFor="orderItemId" className="field-label">İade edilecek ürün</label>
         <select id="orderItemId" name="orderItemId" className="input" defaultValue="">

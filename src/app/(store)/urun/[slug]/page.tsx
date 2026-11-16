@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { AddToCartForm } from "@/components/store/add-to-cart-form";
 import { ProductCard } from "@/components/store/product-card";
 import { getProductDetail } from "@/lib/catalog";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatMoney, jsonLd } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -83,11 +83,11 @@ export default async function ProductPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(productSchema) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbSchema) }}
       />
 
       <div className="container-page py-8">
@@ -182,10 +182,22 @@ export default async function ProductPage({ params }: PageProps) {
 
         <section className="mt-14 grid gap-8 lg:grid-cols-2">
           <div className="rounded-2xl border border-line bg-white p-6">
-            <h2 className="text-xl">Ürün açıklaması</h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-charcoal/75">
-              {product.description}
-            </p>
+            <h2 className="text-xl">{product.description ? "Ürün açıklaması" : "Ürün özellikleri"}</h2>
+            {product.description ? (
+              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-charcoal/75">
+                {product.description}
+              </p>
+            ) : null}
+            {Object.keys(product.attributes).length > 0 ? (
+              <dl className="mt-4 grid grid-cols-1 gap-x-6 text-sm sm:grid-cols-2">
+                {Object.entries(product.attributes).map(([label, value]) => (
+                  <div key={label} className="flex justify-between gap-4 border-b border-line/70 py-2">
+                    <dt className="text-muted">{label}</dt>
+                    <dd className="text-right text-charcoal">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
             {product.packInfo ? (
               <p className="mt-4 rounded-lg bg-ivory px-3 py-2 text-xs text-muted">
                 Paket içeriği: {product.packInfo}

@@ -9,6 +9,20 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: app_db
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      # Yalnızca CI içindeki tek kullanımlık servis konteyneri; gerçek bir gizli değer değildir.
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/app_db
     steps:
       - uses: actions/checkout@v4
 
@@ -20,13 +34,23 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
       - name: TypeScript check
-        run: npm exec tsc -- --noEmit
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint
 
+      - name: Unit tests
+        run: npm run test
+
+      - name: Migrations apply on a clean database
+        run: npm run db:migrate
+
+      - name: Integration tests
+        run: npm run test:integration
+
       - name: Production build
         run: npm run build
-        # Not: tüm veri sayfaları force-dynamic olduğu için build DATABASE_URL gerektirmez.
-        # Veritabanı URL'si yalnızca çalışma zamanında (runtime) gereklidir.

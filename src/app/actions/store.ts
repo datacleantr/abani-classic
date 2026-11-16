@@ -34,6 +34,7 @@ export async function createReturnAction(
   const parsed = returnRequestSchema.safeParse({
     orderNumber: formData.get("orderNumber"),
     orderItemId: formData.get("orderItemId") ?? "",
+    accessToken: formData.get("accessToken") ?? "",
     reason: formData.get("reason"),
   });
   if (!parsed.success) {
@@ -43,8 +44,8 @@ export async function createReturnAction(
     orderNumber: parsed.data.orderNumber,
     orderItemId: parsed.data.orderItemId || undefined,
     reason: parsed.data.reason,
-    actorEmail:
-      identity?.type === "customer" ? identity.customer.email : "misafir-musteri",
+    customerEmail: identity?.type === "customer" ? identity.customer.email : undefined,
+    accessToken: parsed.data.accessToken || undefined,
   });
   return { ok: result.ok, message: result.message };
 }

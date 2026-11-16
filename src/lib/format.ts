@@ -93,3 +93,14 @@ export function sortSizes(sizes: string[]): string[] {
 export function pluralize(count: number, word: string): string {
   return `${count} ${word}`;
 }
+
+/**
+ * JSON-LD'yi <script> içine güvenle gömmek için serileştirir. Ürün adı gibi dış
+ * kaynaklı metinlerdeki "</script>" dizisi betiği kapatamasın diye "<" kaçışlanır.
+ */
+export function jsonLd(value: unknown): string {
+  const lineSeparators = new RegExp(`[${String.fromCharCode(0x2028)}${String.fromCharCode(0x2029)}]`, "g");
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(lineSeparators, (char) => `\\u${char.charCodeAt(0).toString(16)}`);
+}

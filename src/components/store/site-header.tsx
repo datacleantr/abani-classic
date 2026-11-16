@@ -64,6 +64,24 @@ export function SiteHeader({
               {category.name.replace("Erkek ", "")}
             </Link>
           ))}
+          {categories.length > 6 ? (
+            <details className="group relative">
+              <summary className="cursor-pointer list-none transition hover:text-sand [&::-webkit-details-marker]:hidden">
+                Kadın &amp; diğer
+              </summary>
+              <div className="absolute left-0 top-full z-50 mt-3 min-w-52 rounded-xl border border-line bg-white p-2 shadow-lg">
+                {categories.slice(6).map((category) => (
+                  <Link
+                    key={category.slug}
+                    href={`/kategoriler/${category.slug}`}
+                    className="block rounded-lg px-3 py-2 normal-case tracking-normal text-[13px] hover:bg-ivory"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+              </div>
+            </details>
+          ) : null}
           <Link href="/arama?sort=newest" className="text-sand transition hover:text-charcoal">
             Yeni seçki
           </Link>

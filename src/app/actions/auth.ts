@@ -42,9 +42,6 @@ export async function customerRegisterAction(
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "Form geçersiz." };
   }
-  if (parsed.data.password.length < 8) {
-    return { ok: false, message: "Parola en az 8 karakter olmalı." };
-  }
   const result = await registerCustomer({
     email: parsed.data.email,
     password: parsed.data.password,

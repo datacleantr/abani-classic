@@ -105,7 +105,7 @@ export function computeQuote(
       productId: row.productId,
       sku: row.sku,
       productName: row.productName,
-      variantLabel: [row.color, row.size, row.packQuantity > 1 ? `${row.packQuantity}'lü` : null]
+      variantLabel: [row.color, row.size, row.packQuantity > 1 ? `${row.packQuantity} adet` : null]
         .filter(Boolean)
         .join(" / "),
       imageUrl: row.imageUrl,
