@@ -42,13 +42,32 @@ async function createSession(subjectType: "admin" | "customer", subjectId: strin
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
   await db.insert(sessions).values({ token, subjectType, subjectId, expiresAt });
   const jar = await cookies();
-  jar.set(SESSION_COOKIE, token, {
+  jar.set(SESSION_COOKIE, token, cookieOptions(expiresAt));
+}
+
+/**
+ * Production runs behind HTTPS. Preview environments embed the app in a
+ * cross-origin iframe, where `SameSite=Lax` cookies are dropped by the browser;
+ * `None` + `Secure` keeps sessions working there. On your own domain set
+ * SESSION_COOKIE_SAMESITE=lax for the stricter default. Server actions keep
+ * Next.js' built-in origin check regardless of this setting.
+ */
+function cookieOptions(expires: Date) {
+  const isProduction = process.env.NODE_ENV === "production";
+  const configured = process.env.SESSION_COOKIE_SAMESITE;
+  const sameSite: "lax" | "strict" | "none" =
+    configured === "lax" || configured === "strict" || configured === "none"
+      ? configured
+      : isProduction
+        ? "none"
+        : "lax";
+  return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    sameSite,
+    secure: isProduction || sameSite === "none",
     path: "/",
-    expires: expiresAt,
-  });
+    expires,
+  };
 }
 
 export async function getSessionIdentity(): Promise<SessionIdentity> {
@@ -203,5 +222,5 @@ export async function logout(): Promise<void> {
   if (token) {
     await db.delete(sessions).where(eq(sessions.token, token));
   }
-  jar.delete(SESSION_COOKIE);
+  jar.set(SESSION_COOKIE, "", { ...cookieOptions(new Date(0)), maxAge: 0 });
 }
