@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ArrowUpRightIcon, MapPinIcon, TruckIcon } from "@/components/store/icons";
 import { InfoPage, InfoSection } from "@/components/store/info-page";
 import { INSTAGRAM_URL, MARKETPLACE_STORES } from "@/components/store/navigation";
+import { SellerInfo } from "@/components/store/seller-info";
 import { StoreMap } from "@/components/store/store-map";
 import {
   directionsUrl,
@@ -35,15 +36,6 @@ export default function ContactPage() {
   const hours = info.supportHours?.trim() || null;
   const address = info.address?.trim() || null;
   const location = info.location;
-
-  const seller: { label: string; value: string }[] = [
-    { label: "Ticari unvan", value: info.legalName },
-    { label: "Adres", value: info.address },
-    { label: "MERSİS no", value: info.mersisNumber },
-    { label: "Vergi dairesi", value: info.taxOffice },
-    { label: "Vergi no", value: info.taxNumber },
-    { label: "KEP adresi", value: info.kepAddress },
-  ].flatMap((row) => (row.value?.trim() ? [{ label: row.label, value: row.value.trim() }] : []));
 
   return (
     <InfoPage
@@ -187,19 +179,9 @@ export default function ContactPage() {
         </InfoSection>
       ) : null}
 
-      {/* Satıcı bilgileri ticari unvanla birlikte anlam taşır; yalnızca adres varsa yukarıda gösterilir. */}
       {info.legalName?.trim() ? (
         <InfoSection id="satici-bilgileri" title="Satıcı bilgileri">
-          <dl className="grid gap-x-6 gap-y-3 rounded-2xl border border-line bg-white p-5 sm:grid-cols-[160px_1fr]">
-            {seller.map((row) => (
-              <div key={row.label} className="contents">
-                <dt className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted sm:pt-0.5">
-                  {row.label}
-                </dt>
-                <dd className="whitespace-pre-line text-[15px] text-charcoal">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
+          <SellerInfo />
         </InfoSection>
       ) : null}
     </InfoPage>

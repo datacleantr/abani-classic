@@ -2,8 +2,17 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { SellerInfo } from "@/components/store/seller-info";
 import { formatDate } from "@/lib/format";
 import { getLegalDocument, legalDocuments } from "@/lib/legal";
+import { STORE_INFO } from "@/lib/store-info";
+
+/** Satıcı kimliği gereken metinler (STORE_INFO'dan; metnin kendisi taslak kalır). */
+const SELLER_HEADINGS: Record<string, string> = {
+  "mesafeli-satis": "Satıcı bilgileri",
+  "on-bilgilendirme": "Satıcı bilgileri",
+  kvkk: "Veri sorumlusu",
+};
 
 export function generateStaticParams() {
   return Object.keys(legalDocuments).map((slug) => ({ slug }));
@@ -61,6 +70,15 @@ export default async function LegalPage({ params }: PageProps) {
           </section>
         ))}
       </div>
+
+      {SELLER_HEADINGS[slug] && STORE_INFO.legalName ? (
+        <section aria-labelledby="satici" className="mt-10">
+          <h2 id="satici" className="mb-3 text-xl text-charcoal">
+            {SELLER_HEADINGS[slug]}
+          </h2>
+          <SellerInfo />
+        </section>
+      ) : null}
 
       <div className="mt-10 rounded-2xl border border-line bg-white p-5 text-sm">
         <p className="font-medium">Diğer metinler</p>

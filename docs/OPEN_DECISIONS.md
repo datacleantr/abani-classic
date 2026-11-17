@@ -10,7 +10,7 @@ Teknik durum için `docs/GAP_REPORT.md`.
 | --- | --- | --- | --- |
 | 1 | Resmi alan adı (`APP_URL`) | Açık | Kanonik URL, sitemap, e-posta bağlantıları. |
 | 2 | Logo ve marka varlıkları | Açık | Şu an tipografik logotype kullanılıyor; renkler logoya göre kesinleşmeli. |
-| 3 | Ticari unvan, MERSİS, vergi dairesi/no, adres, iletişim | Açık | Yasal metinler, footer ve İletişim sayfası. Değerler `src/lib/store-info.ts` dosyasına girilir; boşken sayfada gösterilmez. **Adres, telefon ve harita konumu girildi (17 Kasım 2026).** Bekleyen: ticari unvan (Google kaydında "Abani Classic Tekstil Sanayi Ticaret A.Ş." görünüyor, teyit edilmedi), MERSİS, vergi dairesi/no, KEP, destek e-postası, çalışma saatleri. Adresin yasal (tebligat) adresle aynı olduğu varsayıldı. |
+| 3 | Ticari unvan, MERSİS, vergi dairesi/no, adres, iletişim | Açık | Yasal metinler, footer ve İletişim sayfası. Değerler `src/lib/store-info.ts` dosyasına girilir; boşken sayfada gösterilmez. **Girildi (17 Kasım 2026):** ticari unvan, VKN, MERSİS, KEP, merkez adresi, telefon, çalışma saatleri, harita konumu. İletişim sayfası ve yasal metinlerin (mesafeli satış, ön bilgilendirme, KVKK) altında gösteriliyor. **Bekleyen:** vergi dairesi, müşteri hizmetleri e-postası. |
 | 4 | Trendyol / Hepsiburada / n11 / Amazon satıcı paneli ürün dışa aktarımları | Açık | Bu siteler otomatik erişimi engelliyor. CSV dosyaları `/admin/ice-aktarim` ile yüklenir. |
 | 5 | SKU / barkod ana listesi | Açık | Şu an SKU'lar geçici (`PZ-<Pazarama ilan kodu>`); yalnızca 36 varyantta barkod var. |
 | 6 | **Gerçek depo stok dosyası** ve tek doğruluk kaynağı | Açık | Yerel veritabanındaki stok (varyant başına 25) deneme değeridir. Üretimde stok 0 açılır. |

@@ -153,7 +153,7 @@ export const legalDocuments: Record<string, LegalDocument> = {
       {
         heading: "Ürün ve satıcı bilgileri",
         bullets: [
-          "Satıcı: Abani Classic (ticari unvan onay bekliyor).",
+          "Satıcı: unvan, adres, MERSİS ve iletişim bilgileri bu formun sonundaki Satıcı bilgileri bölümündedir.",
           "Ürünler: Sipariş özetinde adet, beden, renk ve fiyat bilgisiyle gösterilir.",
           "Toplam tutar: Ürün bedeli, kargo ücreti ve varsa indirimler ödeme adımında gösterilir.",
         ],

@@ -55,17 +55,20 @@ export type StoreInfo = {
 };
 
 export const STORE_INFO: StoreInfo = {
-  legalName: null,
-  mersisNumber: null,
+  // Unvan, VKN, MERSİS, KEP: proje sahibi, 17 Kasım 2026 (pazaryeri satıcı bilgileri ekranı).
+  // MERSİS = "0" + VKN + "00001" — iki değer birbiriyle tutarlı.
+  legalName: "Abani Classic Tekstil Sanayi Ticaret Anonim Şirketi",
+  mersisNumber: "0001231299100001",
+  // Vergi dairesi henüz verilmedi.
   taxOffice: null,
-  taxNumber: null,
+  taxNumber: "0012312991",
   // Adres, telefon ve konum: proje sahibi, 17 Kasım 2026 (Google Haritalar kaydı).
   address: "Oğuzlar Mah., Balgat, 1371. Sk. No:2/D, 06520 Çankaya/Ankara",
-  kepAddress: null,
+  kepAddress: "abaniclassic@hs01.kep.tr",
   email: null,
   phone: "0312 220 58 07",
-  // Google kaydında yalnızca "19.00'da kapanıyor" görünüyor; açılış saati ve günler teyit edilmedi.
-  supportHours: null,
+  // Proje sahibi, 17 Kasım 2026 (Google Haritalar kaydındaki saatler).
+  supportHours: "Pazartesi–Cumartesi 09.00–19.00 · Pazar kapalı",
   location: {
     mapsUrl: "https://maps.app.goo.gl/NTy45drBWKJtY9zt7",
     lat: 39.897965,
@@ -146,11 +149,30 @@ export function telHref(phone: string): string | null {
 }
 
 /**
+ * Satıcı (ve KVKK'da veri sorumlusu) kimlik satırları, yalnızca girilmiş olanlar.
+ * 6563 sayılı Kanun / Elektronik Ticarette Hizmet Sağlayıcı Yönetmeliği'nin istediği bilgiler.
+ */
+export function sellerDetails(info: StoreInfo): { label: string; value: string }[] {
+  return [
+    { label: "Ticari unvan", value: info.legalName },
+    { label: "Merkez adresi", value: info.address },
+    { label: "MERSİS no", value: info.mersisNumber },
+    { label: "Vergi dairesi", value: info.taxOffice },
+    { label: "Vergi kimlik no", value: info.taxNumber },
+    { label: "KEP adresi", value: info.kepAddress },
+    { label: "Telefon", value: info.phone },
+    { label: "E-posta", value: info.email },
+  ].flatMap((row) => (row.value?.trim() ? [{ label: row.label, value: row.value.trim() }] : []));
+}
+
+/**
  * schema.org Organization'a eklenecek iletişim alanları; yalnızca girilmiş olanlar.
  * Telefon E.164 biçiminde ("+903122205807"), adres PostalAddress olarak.
  */
 export function organizationContactSchema(info: StoreInfo): Record<string, unknown> {
   const schema: Record<string, unknown> = {};
+  if (info.legalName?.trim()) schema.legalName = info.legalName.trim();
+  if (info.taxNumber?.trim()) schema.taxID = info.taxNumber.trim();
   const tel = info.phone ? telHref(info.phone) : null;
   if (tel) schema.telephone = tel.replace(/^tel:/, "");
   if (info.email && mailHref(info.email)) schema.email = info.email.trim();

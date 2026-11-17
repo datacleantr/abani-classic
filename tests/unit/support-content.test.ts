@@ -6,6 +6,7 @@ import {
   mapEmbedUrl,
   missingStoreInfo,
   organizationContactSchema,
+  sellerDetails,
   STORE_INFO,
   telHref,
   type StoreInfo,
@@ -61,12 +62,29 @@ const OFF = { ok: false, message: "kapalı" } as const;
 const UNCONFIRMED_CLAIM = /\d+\s*(iş\s*)?gün(ü)? içinde|\d[\d.,]*\s*TL|ücretsiz kargo|Kargo ücreti:/i;
 
 describe("STORE_INFO", () => {
-  it("yalnızca proje sahibinin verdiği adres ve telefon dolu; gerisi uydurulmamış", () => {
-    expect(missingStoreInfo(STORE_INFO, ["address", "phone"])).toEqual([]);
+  it("yalnızca proje sahibinin verdiği bilgiler dolu; gerisi uydurulmamış", () => {
     expect(
-      missingStoreInfo(STORE_INFO, ["legalName", "email", "supportHours", "carriers", "dispatchTime", "feesConfirmed", "story"]),
-    ).toHaveLength(7);
+      missingStoreInfo(STORE_INFO, ["legalName", "address", "phone", "supportHours", "mersisNumber", "taxNumber", "kepAddress"]),
+    ).toEqual([]);
+    expect(
+      missingStoreInfo(STORE_INFO, ["taxOffice", "email", "carriers", "dispatchTime", "feesConfirmed", "story"]),
+    ).toHaveLength(6);
     expect(telHref(STORE_INFO.phone ?? "")).toBe("tel:+903122205807");
+  });
+
+  it("MERSİS numarası VKN ile tutarlı (0 + VKN + 5 hane)", () => {
+    expect(STORE_INFO.mersisNumber).toMatch(/^\d{16}$/);
+    expect(STORE_INFO.taxNumber).toMatch(/^\d{10}$/);
+    expect(STORE_INFO.mersisNumber?.slice(1, 11)).toBe(STORE_INFO.taxNumber);
+  });
+
+  it("satıcı bilgileri yalnızca dolu alanları, sabit sırayla listeler", () => {
+    expect(sellerDetails(EMPTY)).toEqual([]);
+    const labels = sellerDetails(STORE_INFO).map((row) => row.label);
+    expect(labels[0]).toBe("Ticari unvan");
+    expect(labels).toContain("MERSİS no");
+    expect(labels).not.toContain("Vergi dairesi");
+    expect(labels).not.toContain("E-posta");
   });
 
   it("harita ve yol tarifi adresleri koordinattan üretilir", () => {
@@ -81,6 +99,8 @@ describe("STORE_INFO", () => {
     expect(organizationContactSchema(EMPTY)).toEqual({});
     const schema = organizationContactSchema(STORE_INFO);
     expect(schema.telephone).toBe("+903122205807");
+    expect(schema.legalName).toBe("Abani Classic Tekstil Sanayi Ticaret Anonim Şirketi");
+    expect(schema.taxID).toBe("0012312991");
     expect(schema).not.toHaveProperty("email");
     expect(schema.address).toMatchObject({ "@type": "PostalAddress", postalCode: "06520", addressCountry: "TR" });
   });

@@ -154,7 +154,9 @@ export function SiteFooter({ categories }: { categories: NavCategory[] }) {
 
       <div className="border-t border-white/10">
         <div className="container-page py-5 text-xs text-ivory/70">
-          <p>© {new Date().getFullYear()} Abani Classic. Tüm hakları saklıdır.</p>
+          <p>
+            © {new Date().getFullYear()} {STORE_INFO.legalName?.trim() || "Abani Classic"}. Tüm hakları saklıdır.
+          </p>
         </div>
       </div>
     </footer>
