@@ -1,25 +1,20 @@
 import Link from "next/link";
 
-import { ArrowUpRightIcon } from "./icons";
+import { STORE_INFO, telHref } from "@/lib/store-info";
+
+import { ArrowUpRightIcon, MapPinIcon, PhoneIcon } from "./icons";
 import {
   categoryHref,
   INSTAGRAM_URL,
   MARKETPLACE_STORES,
   splitCategories,
+  SUPPORT_LINKS,
   type NavCategory,
 } from "./navigation";
 import { NewsletterForm } from "./newsletter-form";
 
-/**
- * Yalnızca var olan sayfalar linklenir. Hakkımızda, İletişim, SSS ve Kargo ve Teslimat sayfaları
- * henüz yok; içerikleri işletmece onaylanınca eklenecek (koordinatör kaydı).
- */
-const HELP_LINKS = [
-  { href: "/siparis-takip", label: "Sipariş takibi" },
-  { href: "/hesabim", label: "Hesabım" },
-  { href: "/favoriler", label: "Favorilerim" },
-  { href: "/sepet", label: "Sepetim" },
-];
+/** Yalnızca var olan sayfalar linklenir. Kurumsal sayfalar `SUPPORT_LINKS` (navigation.ts) üzerinden. */
+const HELP_LINKS = [...SUPPORT_LINKS, { href: "/hesabim", label: "Hesabım" }];
 
 const LEGAL_LINKS = [
   { href: "/yasal/kvkk", label: "KVKK Aydınlatma Metni" },
@@ -45,6 +40,8 @@ function ExternalLink({ href, children }: { href: string; children: string }) {
 
 export function SiteFooter({ categories }: { categories: NavCategory[] }) {
   const { men, women } = splitCategories(categories);
+  const address = STORE_INFO.address?.trim() || null;
+  const phone = STORE_INFO.phone?.trim() || null;
 
   return (
     <footer className="surface-dark mt-20">
@@ -58,6 +55,22 @@ export function SiteFooter({ categories }: { categories: NavCategory[] }) {
             Erkek iç giyimde güvendiğiniz markaları bir araya getiren mağaza: Tutku, Jiber, Seher Yıldızı,
             Çift Kaplan ve Abani Classic.
           </p>
+          {address || phone ? (
+            <address className="mt-5 space-y-1 text-sm not-italic leading-relaxed text-ivory/75">
+              {address ? (
+                <Link href="/iletisim#adres" className="flex gap-2 transition-colors hover:text-white">
+                  <MapPinIcon size={16} className="mt-0.5 shrink-0 text-brand-red-light" />
+                  <span>{address}</span>
+                </Link>
+              ) : null}
+              {phone ? (
+                <a href={telHref(phone) ?? undefined} className="flex min-h-7 items-center gap-2 transition-colors hover:text-white">
+                  <PhoneIcon size={16} className="shrink-0 text-brand-red-light" />
+                  {phone}
+                </a>
+              ) : null}
+            </address>
+          ) : null}
           <h2 className={`${headingClass} mt-8`}>Bülten</h2>
           <p className="mt-2 max-w-sm text-xs leading-relaxed text-ivory/70">
             Yeni ürün ve duyurulardan e-posta ile haberdar olun. İletişim izninizi dilediğiniz an geri

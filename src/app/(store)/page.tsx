@@ -22,6 +22,7 @@ import {
   type StoreCategory,
 } from "@/lib/catalog";
 import { jsonLd } from "@/lib/format";
+import { organizationContactSchema, STORE_INFO } from "@/lib/store-info";
 
 export const dynamic = "force-dynamic";
 
@@ -172,6 +173,7 @@ export default async function HomePage() {
     url: appUrl,
     logo: new URL(BRAND_LOGO_PATH, appUrl).toString(),
     sameAs: [INSTAGRAM_URL, ...MARKETPLACE_STORES.map((store) => store.href)],
+    ...organizationContactSchema(STORE_INFO),
   };
 
   return (

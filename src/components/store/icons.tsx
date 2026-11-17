@@ -150,3 +150,20 @@ export function TruckIcon(props: IconProps) {
     </Svg>
   );
 }
+
+export function MapPinIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 21s-6.5-5.6-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21Z" />
+      <circle cx="12" cy="9.8" r="2.4" />
+    </Svg>
+  );
+}
+
+export function PhoneIcon(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M6.6 3.8h2.6l1.4 4-2 1.3a11 11 0 0 0 6.3 6.3l1.3-2 4 1.4v2.6a1.8 1.8 0 0 1-2 1.8A16.4 16.4 0 0 1 4.8 5.8a1.8 1.8 0 0 1 1.8-2Z" />
+    </Svg>
+  );
+}

@@ -77,6 +77,16 @@ export function isActivePath(pathname: string | null, href: string, exact = fals
 
 export const INSTAGRAM_URL = "https://www.instagram.com/abaniclassic/";
 
+/** Kurumsal ve yardım sayfaları: footer "Yardım" sütunu ve kurumsal sayfaların yan menüsü. */
+export const SUPPORT_LINKS: { href: string; label: string }[] = [
+  { href: "/sss", label: "Sıkça sorulan sorular" },
+  { href: "/kargo-ve-teslimat", label: "Kargo ve teslimat" },
+  { href: "/yasal/iade", label: "İade ve değişim" },
+  { href: "/siparis-takip", label: "Sipariş takibi" },
+  { href: "/iletisim", label: "İletişim" },
+  { href: "/hakkimizda", label: "Hakkımızda" },
+];
+
 /** Proje sahibinin verdiği resmi mağaza adresleri (brief, 17 Kasım 2026). Logo kullanılmaz. */
 export const MARKETPLACE_STORES: { name: string; href: string }[] = [
   { name: "Trendyol", href: "https://www.trendyol.com/magaza/abani-classic-m-215999" },

@@ -10,25 +10,27 @@ Teknik durum için `docs/GAP_REPORT.md`.
 | --- | --- | --- | --- |
 | 1 | Resmi alan adı (`APP_URL`) | Açık | Kanonik URL, sitemap, e-posta bağlantıları. |
 | 2 | Logo ve marka varlıkları | Açık | Şu an tipografik logotype kullanılıyor; renkler logoya göre kesinleşmeli. |
-| 3 | Ticari unvan, MERSİS, vergi dairesi/no, adres, iletişim | Açık | Yasal metinler ve footer. Şu an yer tutucu. |
+| 3 | Ticari unvan, MERSİS, vergi dairesi/no, adres, iletişim | Açık | Yasal metinler, footer ve İletişim sayfası. Değerler `src/lib/store-info.ts` dosyasına girilir; boşken sayfada gösterilmez. **Adres, telefon ve harita konumu girildi (17 Kasım 2026).** Bekleyen: ticari unvan (Google kaydında "Abani Classic Tekstil Sanayi Ticaret A.Ş." görünüyor, teyit edilmedi), MERSİS, vergi dairesi/no, KEP, destek e-postası, çalışma saatleri. Adresin yasal (tebligat) adresle aynı olduğu varsayıldı. |
 | 4 | Trendyol / Hepsiburada / n11 / Amazon satıcı paneli ürün dışa aktarımları | Açık | Bu siteler otomatik erişimi engelliyor. CSV dosyaları `/admin/ice-aktarim` ile yüklenir. |
 | 5 | SKU / barkod ana listesi | Açık | Şu an SKU'lar geçici (`PZ-<Pazarama ilan kodu>`); yalnızca 36 varyantta barkod var. |
 | 6 | **Gerçek depo stok dosyası** ve tek doğruluk kaynağı | Açık | Yerel veritabanındaki stok (varyant başına 25) deneme değeridir. Üretimde stok 0 açılır. |
 | 7 | **Satış fiyatı politikası** ve maliyetler | Açık | Fiyatlar Pazarama vitrin fiyatından *öneri* olarak kopyalandı. Kâr raporu maliyet olmadan açılmaz. |
 | 8 | Ödeme sağlayıcısı (iyzico / PayTR / Param) | Açık | Kart ödemesi yok. Hazır olan: havale/EFT (`PAYMENT_PROVIDER=bank_transfer` + IBAN). |
-| 9 | Kargo firması, anlaşma ve API erişimi | Açık | Takip numarası panelden elle giriliyor. |
+| 9 | Kargo firması, anlaşma ve API erişimi | Açık | Takip numarası panelden elle giriliyor. Firma adı `store-info.ts` → `shipping.carriers`; boşken Kargo/SSS sayfalarında firma adı yazılmaz. |
 | 10 | E-posta gönderim alan adı ve sağlayıcı | Açık | **Hiç e-posta gönderilmiyor** (sipariş onayı, kargo bildirimi, şifre sıfırlama yok). |
 | 11 | **Ürün görseli dosyaları ve kullanım hakkı teyidi** | Açık | Görseller Pazarama adresinden gösteriliyor (kopyalanamadı). Canlı için özgün dosyalar gerekli. Üretici markalara (Tutku, Berrak, Anıt…) ait görsellerin kendi sitenizde kullanım izni teyit edilmeli. |
 | 12 | İade/cayma prosedürü, iç giyimde hijyen istisnası | Açık | Hukuk kontrolü gerekli. Sistem otomatik ret vermiyor. |
 | 13 | KVKK aydınlatma, ETBİS, İYS, mesafeli satış metinleri | Açık | `src/lib/legal.ts` içindeki metinler taslaktır; hukuk onayı olmadan yayınlanmamalı. |
 | 14 | KDV oranları | Açık | Tüm ürünlerde %10 varsayıldı; mali müşavir teyidi gerekli. |
-| 15 | Kargo ücreti ve ücretsiz kargo eşiği | Açık | Kodda 49,90 TL ve 1.000 TL (`src/lib/pricing.ts`) — önceki taslaktan kalma, onaylanmadı. |
+| 15 | Kargo ücreti ve ücretsiz kargo eşiği | Açık | Kodda 49,90 TL ve 1.000 TL (`src/lib/pricing.ts`) — önceki taslaktan kalma, onaylanmadı. Onaylanınca `store-info.ts` → `shipping.feesConfirmed: true`; o zamana kadar Kargo/SSS sayfaları rakam yazmaz. |
 | 16 | Vitrindeki vaatler | Açık | "14 gün iade", "1-2 iş günü kargo", "%100 pamuk / modal", "Türkiye üretimi" gibi ifadeler önceki taslaktan kalma ve doğrulanmadı. Onaylamadıklarınız kaldırılmalı. |
 | 17 | Ürün açıklamaları | Açık | Kaynakta metin açıklama yok; uydurulmadı. Özellik tablosu gösteriliyor. |
 | 18 | Kadın ürünleri ve çocuk ürünü vitrinde olacak mı? | Açık | Pazarama mağazasında var; 4 kadın kategorisi eklendi. Marka konumlandırma kararı. |
 | 19 | Üretici markaların yetkili satıcılığı | Açık | 12+ marka listeleniyor; kendi sitenizde marka adı/logo kullanımı için yetki durumu. |
 | 20 | Barındırma, veritabanı, görsel depolama, arka plan işi sağlayıcısı | Açık | `vercel.json` cron tanımı hazır; ortamlar kurulmadı. |
 | 21 | Yedekleme hedefleri (RPO/RTO) | Açık | Yedekleme ve geri yükleme testi yapılmadı. |
+| 22 | Kargoya verilme süresi ve Hakkımızda metni | Açık | `store-info.ts` → `shipping.dispatchTime` ve `about.story`. Boşken süre yazılmaz, marka hikâyesi bölümü çıkmaz. |
+| 23 | İletişim formu | Açık | Mesajları saklayacak tablo (şema değişikliği) ve e-posta sağlayıcısı (#10) gerekir; şimdilik İletişim sayfasında form yok. |
 
 ## Uygulanan kararlar
 

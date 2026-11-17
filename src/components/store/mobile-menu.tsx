@@ -15,6 +15,7 @@ import {
   categoryHref,
   isActivePath,
   splitCategories,
+  SUPPORT_LINKS,
   type NavBrand,
   type NavCategory,
 } from "./navigation";
@@ -297,6 +298,20 @@ export function MobileMenu({
                     Sipariş takibi
                   </Link>
                 </li>
+              </ul>
+
+              <ul aria-label="Yardım ve kurumsal" className="mt-6 flex flex-wrap gap-x-5 gap-y-1 px-1 text-[14px]">
+                {SUPPORT_LINKS.filter((link) => link.href !== "/siparis-takip").map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      onClick={onNavigate}
+                      className="inline-flex min-h-11 items-center text-muted underline-offset-4 hover:text-navy hover:underline"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </nav>
           </div>

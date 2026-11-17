@@ -13,6 +13,9 @@ const csp = [
   "img-src 'self' data: blob: https://img.pzrmcdn.com",
   "font-src 'self' data:",
   `connect-src 'self'${isDev ? " ws:" : ""}`,
+  // İletişim sayfasındaki Google Haritalar çerçevesi (yalnızca ziyaretçi "Haritayı göster" deyince yüklenir).
+  // 'self' korunur: frame-src tanımlanmadan önce default-src 'self' geçerliydi.
+  "frame-src 'self' https://www.google.com",
   "frame-ancestors 'self'",
   "form-action 'self'",
   "base-uri 'self'",
