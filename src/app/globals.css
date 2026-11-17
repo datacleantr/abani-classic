@@ -10,8 +10,69 @@
   --color-muted: #6f6a61;
   --color-line: #ded6c8;
   --color-success: #2f6b52;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Iowan Old Style", "Palatino Linotype", ui-serif, Georgia, "Times New Roman", serif;
+
+  /* Vitrin (Kasım 2026): lacivert ana renk + logodaki marka kırmızısı vurgu (ölçülü kullanılır;
+     fiyat ve uzun metin kırmızı olmaz). Kontrast (WCAG 2.2): beyaz/navy 16.2 · ivory/navy 14.5. */
+  --color-navy: #13203a;
+  --color-navy-deep: #0b1526;
+  --color-navy-soft: #22314d;
+  --color-navy-tint: #e9edf3;
+  --color-paper: #fbfaf7;
+
+  /* Marka kırmızısı — logodaki "ABANi" kırmızısı (ölçülen ≈ #98101a).
+     Açık zemin: brand-red metin beyaz 8.49 · paper 8.13 · ivory 7.60 · navy-tint 7.23 · brand-red-soft 7.41.
+     Beyaz metin brand-red üzerinde 8.49, brand-red-deep üzerinde 11.05.
+     DİKKAT: brand-red / brand-red-deep koyu zeminde metin OLMAZ (navy 1.91, navy-deep 2.15).
+     Koyu zemin: brand-red-light metin navy 5.70 · navy-deep 6.42 · navy-soft 4.57 (yalnızca koyu zeminde). */
+  --color-brand-red: #9a1218;
+  --color-brand-red-deep: #7a0e13;
+  --color-brand-red-soft: #f8eded;
+  --color-brand-red-light: #f07278;
+  /* Yalnızca koyu zeminde BÜYÜK başlık vurgusu (≥24px veya ≥19px kalın; WCAG büyük metin 3:1):
+     navy 3.67 · navy-deep 4.13. Logo kırmızısına daha yakın, pembeye kaçmaz. Küçük metinde kullanma. */
+  --color-brand-red-bright: #e0353d;
+  /* Bronz: YALNIZCA ana sayfa hero'sunun erkek slaytında vurgu (proje sahibinin kararı, 17 Kasım 2026).
+     Koyu zeminde metin: navy 6.25 · navy-deep 7.05. Bronz zeminde beyaz metin 2.59 → KULLANMA; navy metin 7.05. */
+  --color-bronze: #c19a6b;
+  --color-bronze-deep: #a8814f;
+
+  /* next/font değişkenleri <html> üzerinde tanımlanır (src/app/layout.tsx); yüklenemezse yedek yığın. */
+  --font-sans: var(--font-inter, "Inter"), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-playfair, "Playfair Display"), "Iowan Old Style", "Palatino Linotype", ui-serif,
+    Georgia, "Times New Roman", serif;
+
+  --animate-drawer-in-left: drawer-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-slide-down: slide-down 0.2s ease-out;
+
+  @keyframes drawer-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 @layer base {
@@ -33,9 +94,15 @@
     letter-spacing: -0.015em;
   }
 
+  /* Odak halkası (≥ 3:1): brand-red beyaz 8.49 · paper 8.13 · ivory 7.60 · navy-tint 7.23.
+     Koyu zeminde `.surface-dark` brand-red-light'a geçer: navy 5.70 · navy-deep 6.42. */
   :focus-visible {
-    outline: 2px solid var(--color-sand);
+    outline: 2px solid var(--color-brand-red);
     outline-offset: 3px;
+  }
+
+  .surface-dark :focus-visible {
+    outline-color: var(--color-brand-red-light);
   }
 
   ::selection {
@@ -49,24 +116,80 @@
     @apply mx-auto w-full max-w-[1240px] px-5 sm:px-8;
   }
 
+  /* Açık zemin: brand-red (beyaz 8.49 · paper 8.13 · ivory 7.60 · navy-tint 7.23). */
   .eyebrow {
-    @apply text-[11px] font-semibold uppercase tracking-[0.22em] text-sand;
+    @apply text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-red;
+  }
+
+  /* Koyu zemin: brand-red-light (navy 5.70 · navy-deep 6.42). */
+  .eyebrow-light {
+    @apply text-[11px] font-semibold uppercase tracking-[0.22em] text-brand-red-light;
   }
 
   .btn,
   .btn-dark,
-  .btn-sand,
   .btn-outline,
-  .btn-quiet {
+  .btn-quiet,
+  .btn-navy,
+  .btn-accent,
+  .btn-bronze,
+  .btn-outline-navy,
+  .btn-outline-light {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[13px] font-medium uppercase tracking-[0.12em] transition-colors disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  /* Ana eylem (açık zemin): beyaz/navy 16.2, hover beyaz/navy-soft 13.0 */
+  .btn-navy {
+    @apply bg-navy text-white hover:bg-navy-soft;
+  }
+
+  /* Vurgu eylemi (açık veya koyu zemin): beyaz/brand-red 8.49, hover beyaz/brand-red-deep 11.05.
+     Sayfa başına bir-iki ana çağrıda kullanılır; düğme metni ayırt edicidir (zemin/çevre kontrastı gerekmez). */
+  .btn-accent {
+    @apply bg-brand-red text-white hover:bg-brand-red-deep;
+  }
+
+  /* Yalnızca hero erkek slaytı: bronz zemin, navy-deep metin (7.05); hover bronze-deep/navy-deep 5.1 */
+  .btn-bronze {
+    @apply bg-bronze text-navy-deep hover:bg-bronze-deep;
+  }
+
+  /* İkincil eylem, açık zemin */
+  .btn-outline-navy {
+    @apply border border-navy/30 text-navy hover:border-navy hover:bg-navy hover:text-white;
+  }
+
+  /* İkincil eylem, koyu zemin (navy / görsel üstü koyu katman) */
+  .btn-outline-light {
+    @apply border border-white/50 text-white hover:border-white hover:bg-white hover:text-navy;
+  }
+
+  /* Bölüm başlığı: navy/ivory 14.5, navy/beyaz 16.2 */
+  .section-title {
+    @apply font-display text-[28px] leading-[1.15] text-navy sm:text-[36px];
+  }
+
+  .section-lead {
+    @apply max-w-2xl text-[15px] leading-relaxed text-muted;
+  }
+
+  /* Koyu bölüm zemini: odak halkası otomatik brand-red-light'a döner. Metin ivory 14.5, ikincil ivory/70 7.7 */
+  .surface-dark {
+    @apply bg-navy text-ivory;
+  }
+
+  /* Header ikon düğmesi: 44×44 dokunma hedefi */
+  .icon-btn {
+    @apply relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-navy transition-colors hover:bg-navy-tint;
+  }
+
+  /* Adet rozeti: beyaz/brand-red 8.49 */
+  .count-badge {
+    @apply pointer-events-none absolute right-0.5 top-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-red px-1 text-[10px] font-semibold leading-none text-white;
   }
 
   .btn-dark {
     @apply bg-charcoal text-ivory hover:bg-charcoal-soft;
-  }
-
-  .btn-sand {
-    @apply bg-sand text-charcoal hover:bg-[#a3906f];
   }
 
   .btn-outline {
@@ -74,7 +197,7 @@
   }
 
   .btn-quiet {
-    @apply border border-line bg-white/70 text-charcoal hover:border-sand hover:bg-white;
+    @apply border border-line bg-white/70 text-charcoal hover:border-navy/40 hover:bg-white;
   }
 
   .field-label {
@@ -82,7 +205,7 @@
   }
 
   .input {
-    @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-charcoal placeholder:text-muted/60 focus:border-sand focus:outline-none focus:ring-2 focus:ring-sand/30;
+    @apply w-full rounded-lg border border-line bg-white px-3.5 py-2.5 text-sm text-charcoal placeholder:text-muted/60 focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/15;
   }
 
   .card {
@@ -94,7 +217,7 @@
   }
 
   .link-quiet {
-    @apply text-sm text-muted underline decoration-line underline-offset-4 transition hover:text-charcoal hover:decoration-sand;
+    @apply text-sm text-muted underline decoration-line underline-offset-4 transition hover:text-charcoal hover:decoration-navy;
   }
 
   .table-base {

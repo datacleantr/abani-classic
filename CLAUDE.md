@@ -3,6 +3,11 @@
 Abani Classic markasının kendi alan adında doğrudan satış yapacağı e-ticaret platformu.
 Türkiye pazarı, Türkçe arayüz, premium ve mobil öncelikli tasarım, **modüler monolith**.
 
+**Proje anayasası (canlı belge):** <https://claude.ai/artifact/1XDFgMQ9ng2dPgwK7MNxe7> — değişmez
+kurallar, yol haritası, aktif sprint panosu, açık kararlar ve değişiklik günlüğü. Claude Docs
+bağlayıcısıyla okunur/yazılır. Her tamamlanan iş (commit, PR, birleşme) değişiklik günlüğüne,
+iş durumu panoya işlenir.
+
 Ana referans: `ABANI_CLASSIC_IMPLEMENTATION_BLUEPRINT.md` (kullanıcıda; repoda yoksa isteyin).
 Mevcut durum ve eksikler: `docs/GAP_REPORT.md`. İşletme kararı bekleyenler: `docs/OPEN_DECISIONS.md`.
 
@@ -88,8 +93,21 @@ Bunlar ihlal edildiğinde para, stok veya kişisel veri kaybı olur. Değiştirm
 
 ## Tasarım sistemi
 
-Token'lar `src/app/globals.css` içinde (`@theme`): `charcoal #171717`, `ivory #F5F2EC`,
-`sand #B5A38A`, `muted`, `line`. Başlıklar serif (`font-display`), gövde sans. Hazır sınıflar:
-`.container-page`, `.btn-dark/.btn-outline/.btn-quiet`, `.input`, `.field-label`, `.card`,
-`.badge`, `.eyebrow`. Yeni renk/yarıçap uydurmak yerine bunları kullan. Görünür focus halkası
-ve `prefers-reduced-motion` desteği korunmalı; hedef WCAG 2.2 AA.
+Token'lar `src/app/globals.css` içinde (`@theme`). Proje sahibinin kararı (17 Kasım 2026):
+**ana renk lacivert, vurgu rengi logonun kırmızısı**; logo `public/brand/abani-classic-logo.webp`
+(`brand-logo.tsx`), yeniden çizilmez/renklendirilmez.
+
+- Ana: `navy #13203a`, `navy-deep #0b1526`, `navy-soft`, `navy-tint`; zemin `paper #fbfaf7`, `ivory`.
+- Vurgu (açık zemin): `brand-red #9a1218` (metin ve beyaz metinli düğme, 8.5:1), `brand-red-deep` (hover),
+  `brand-red-soft` (çok açık zemin).
+- Vurgu (koyu zemin): küçük metin `brand-red-light #f07278` (≥4.5:1); yalnızca büyük başlık
+  `brand-red-bright #e0353d` (≥3:1). `brand-red` koyu zeminde metin olarak KULLANILMAZ.
+- Kırmızı ölçülü kullanılır: fiyatlar ve uzun metinler kırmızı olmaz.
+- `sand` yalnızca admin paneli için kaldı.
+
+Fontlar: başlık Playfair Display (`font-display`), gövde Inter (`font-sans`). Hazır sınıflar:
+`.container-page`, `.btn-accent`, `.btn-navy`, `.btn-outline-navy`, `.btn-outline-light`,
+`.btn-dark/.btn-outline/.btn-quiet`, `.section-title`, `.section-lead`, `.eyebrow`, `.eyebrow-light`,
+`.surface-dark`, `.icon-btn`, `.count-badge`, `.input`, `.field-label`, `.card`, `.badge`.
+Yeni renk/yarıçap uydurmak yerine bunları kullan. Görünür focus halkası ve
+`prefers-reduced-motion` desteği korunmalı; hedef WCAG 2.2 AA.

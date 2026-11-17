@@ -50,7 +50,6 @@ export function AdminLoginForm() {
           type="email"
           autoComplete="username"
           required
-          defaultValue="owner@abaniclassic.com"
           className="input"
         />
       </div>
@@ -73,12 +72,13 @@ export function AdminLoginForm() {
           {state.message}
         </p>
       ) : null}
-      <div className="rounded-lg border border-line bg-ivory px-3 py-2 text-[11px] leading-relaxed text-muted">
-        <p className="font-medium text-charcoal">Demo hesaplar</p>
-        <p>owner@abaniclassic.com · Abani2026! (super admin)</p>
-        <p>katalog@abaniclassic.com · Katalog2026! (katalog)</p>
-        <p>operasyon@abaniclassic.com · Operasyon2026! (sipariş)</p>
-      </div>
+      {/* Seed'deki demo hesaplar yalnızca yerel geliştirmede hatırlatılır; üretim derlemesinde görünmez. */}
+      {process.env.NODE_ENV === "development" ? (
+        <div className="rounded-lg border border-line bg-ivory px-3 py-2 text-[11px] leading-relaxed text-muted">
+          <p className="font-medium text-charcoal">Yerel geliştirme — seed demo hesapları</p>
+          <p>Giriş bilgileri seed betiğinde: src/db/seed.ts</p>
+        </div>
+      ) : null}
     </form>
   );
 }

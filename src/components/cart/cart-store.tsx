@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -25,20 +26,69 @@ export type CartLine = {
 
 type CartState = { lines: CartLine[]; couponCode: string };
 
+/** `addLine` sonucu: sepette oluşan adet ve stok sınırı nedeniyle kırpılıp kırpılmadığı. */
+export type AddLineResult = {
+  /** Satırın sepetteki yeni adedi. */
+  quantity: number;
+  /** Bu çağrıyla gerçekten eklenen adet (sınırdaysa 0 olabilir). */
+  added: number;
+  /** İstenen adet `maxQuantity` sınırına takıldıysa true. */
+  limited: boolean;
+  maxQuantity: number;
+};
+
+/**
+ * Saf birleştirme: aynı varyant varsa adet artırılır; her durumda adet `maxQuantity`
+ * (en az 1) ile sınırlanır ve sınıra takılma bildirilir.
+ */
+export function mergeCartLine(lines: CartLine[], line: CartLine): { lines: CartLine[]; result: AddLineResult } {
+  const max = Math.max(1, Math.trunc(line.maxQuantity) || 0);
+  const requested = Math.max(1, Math.trunc(line.quantity) || 0);
+  const existing = lines.find((item) => item.variantId === line.variantId);
+  const before = existing?.quantity ?? 0;
+  const wanted = before + requested;
+  const quantity = Math.min(wanted, Math.max(max, before));
+  const result: AddLineResult = {
+    quantity,
+    added: Math.max(0, quantity - before),
+    limited: wanted > max,
+    maxQuantity: max,
+  };
+  if (existing) {
+    return {
+      lines: lines.map((item) =>
+        item.variantId === line.variantId ? { ...item, quantity, maxQuantity: line.maxQuantity } : item,
+      ),
+      result,
+    };
+  }
+  return { lines: [...lines, { ...line, quantity }], result };
+}
+
+/** Çekmece kapanınca odağın döneceği öğe yoksa (ör. kaldırıldıysa) header'daki sepet düğmesi. */
+export const CART_TRIGGER_ATTRIBUTE = "data-cart-trigger";
+
 type CartContextValue = {
   lines: CartLine[];
   couponCode: string;
   isReady: boolean;
   drawerOpen: boolean;
+  /** Son eklemede stok sınırına takılındıysa çekmecede gösterilen not. */
+  notice: string | null;
   itemCount: number;
   subtotal: number;
-  addLine: (line: CartLine) => void;
+  /**
+   * Satırı ekler ve sepet çekmecesini açar. `opener`: çekmece kapanınca odağın döneceği öğe
+   * (verilmezse o anki odaklı öğe).
+   */
+  addLine: (line: CartLine, opener?: HTMLElement | null) => AddLineResult;
   updateQuantity: (variantId: string, quantity: number) => void;
   removeLine: (variantId: string) => void;
   clear: () => void;
   setCouponCode: (code: string) => void;
-  openDrawer: () => void;
-  closeDrawer: () => void;
+  openDrawer: (opener?: HTMLElement | null) => void;
+  /** `restoreFocus: false` — çekmecedeki bir bağlantıyla sayfa değişirken odak geri taşınmaz. */
+  closeDrawer: (options?: { restoreFocus?: boolean }) => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -63,6 +113,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CartState>({ lines: [], couponCode: "" });
   const [isReady, setIsReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Hızlı art arda eklemelerde sonucu doğru hesaplamak için güncel satırların kopyası.
+  const linesRef = useRef<CartLine[]>([]);
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    linesRef.current = state.lines;
+  }, [state.lines]);
 
   useEffect(() => {
     // Hydrate from localStorage after mount to avoid SSR mismatch; deferred to a
@@ -79,25 +137,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state, isReady]);
 
-  const addLine = useCallback((line: CartLine) => {
-    setState((current) => {
-      const existing = current.lines.find((item) => item.variantId === line.variantId);
-      if (existing) {
-        return {
-          ...current,
-          lines: current.lines.map((item) =>
-            item.variantId === line.variantId
-              ? {
-                  ...item,
-                  quantity: Math.min(item.quantity + line.quantity, Math.max(1, line.maxQuantity)),
-                }
-              : item,
-          ),
-        };
-      }
-      return { ...current, lines: [...current.lines, line] };
+  const rememberOpener = useCallback((opener?: HTMLElement | null) => {
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    openerRef.current =
+      opener ?? (active instanceof HTMLElement && active !== document.body ? active : null);
+  }, []);
+
+  const addLine = useCallback(
+    (line: CartLine, opener?: HTMLElement | null) => {
+      const { lines: next, result } = mergeCartLine(linesRef.current, line);
+      linesRef.current = next;
+      setState((current) => ({ ...current, lines: mergeCartLine(current.lines, line).lines }));
+      rememberOpener(opener);
+      setNotice(
+        result.limited ? `${line.productName}: en fazla ${result.maxQuantity} adet eklenebilir.` : null,
+      );
+      setDrawerOpen(true);
+      return result;
+    },
+    [rememberOpener],
+  );
+
+  const openDrawer = useCallback(
+    (opener?: HTMLElement | null) => {
+      rememberOpener(opener);
+      setNotice(null);
+      setDrawerOpen(true);
+    },
+    [rememberOpener],
+  );
+
+  const closeDrawer = useCallback((options?: { restoreFocus?: boolean }) => {
+    setDrawerOpen(false);
+    const target = openerRef.current;
+    openerRef.current = null;
+    if (options?.restoreFocus === false) return;
+    // Çekmece kaldırıldıktan sonra odağı açan öğeye (DOM'dan çıktıysa header sepet düğmesine) taşı.
+    window.requestAnimationFrame(() => {
+      const fallback = document.querySelector<HTMLElement>(`[${CART_TRIGGER_ATTRIBUTE}]`);
+      const destination = target?.isConnected ? target : fallback;
+      destination?.focus();
     });
-    setDrawerOpen(true);
   }, []);
 
   const updateQuantity = useCallback((variantId: string, quantity: number) => {
@@ -136,6 +216,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       couponCode: state.couponCode,
       isReady,
       drawerOpen,
+      notice,
       itemCount,
       subtotal,
       addLine,
@@ -143,10 +224,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       removeLine,
       clear,
       setCouponCode,
-      openDrawer: () => setDrawerOpen(true),
-      closeDrawer: () => setDrawerOpen(false),
+      openDrawer,
+      closeDrawer,
     };
-  }, [state, isReady, drawerOpen, addLine, updateQuantity, removeLine, clear, setCouponCode]);
+  }, [state, isReady, drawerOpen, notice, addLine, updateQuantity, removeLine, clear, setCouponCode, openDrawer, closeDrawer]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

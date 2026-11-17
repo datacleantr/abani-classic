@@ -96,9 +96,11 @@ export default async function AccountPage() {
           <section className="rounded-2xl border border-line bg-white p-5 text-sm">
             <h2 className="text-lg">İletişim izinleri</h2>
             <p className="mt-2 text-xs leading-relaxed text-muted">
-              Pazarlama izni sipariş işleminden ayrı tutulur. İzninizi geri almak için
-              destek@abaniclassic.com adresine yazabilirsiniz; talebiniz izin kaydıyla birlikte
-              işlenir.
+              Pazarlama izni sipariş işleminden ayrı tutulur. Siparişlerinizle ilgili güncel bilgiye{" "}
+              <Link href="/siparis-takip" className="underline decoration-line underline-offset-2">
+                sipariş takip
+              </Link>{" "}
+              sayfasından ulaşabilirsiniz.
             </p>
           </section>
 

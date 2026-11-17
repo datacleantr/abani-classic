@@ -56,9 +56,6 @@ export function AuthPanel() {
           <button type="submit" disabled={loginPending} className="btn-dark w-full">
             {loginPending ? "Giriş yapılıyor…" : "Giriş yap"}
           </button>
-          <p className="text-[11px] text-muted">
-            Demo hesap: ayse@example.com · Musteri2026!
-          </p>
           {state && !state.ok ? (
             <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
               {state.message}

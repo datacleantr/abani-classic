@@ -1,54 +1,147 @@
 import Link from "next/link";
 
+import { ArrowUpRightIcon } from "./icons";
+import {
+  categoryHref,
+  INSTAGRAM_URL,
+  MARKETPLACE_STORES,
+  splitCategories,
+  type NavCategory,
+} from "./navigation";
 import { NewsletterForm } from "./newsletter-form";
 
-export function SiteFooter() {
+/**
+ * Yalnızca var olan sayfalar linklenir. Hakkımızda, İletişim, SSS ve Kargo ve Teslimat sayfaları
+ * henüz yok; içerikleri işletmece onaylanınca eklenecek (koordinatör kaydı).
+ */
+const HELP_LINKS = [
+  { href: "/siparis-takip", label: "Sipariş takibi" },
+  { href: "/hesabim", label: "Hesabım" },
+  { href: "/favoriler", label: "Favorilerim" },
+  { href: "/sepet", label: "Sepetim" },
+];
+
+const LEGAL_LINKS = [
+  { href: "/yasal/kvkk", label: "KVKK Aydınlatma Metni" },
+  { href: "/yasal/gizlilik", label: "Gizlilik ve Çerez Politikası" },
+  { href: "/yasal/cerezler", label: "Çerez Tercihleri" },
+  { href: "/yasal/mesafeli-satis", label: "Mesafeli Satış Sözleşmesi" },
+  { href: "/yasal/on-bilgilendirme", label: "Ön Bilgilendirme Formu" },
+  { href: "/yasal/iade", label: "İade ve Değişim" },
+];
+
+const linkClass = "inline-flex min-h-7 items-center text-ivory/75 transition-colors hover:text-white";
+const headingClass = "eyebrow-light font-sans";
+
+function ExternalLink({ href, children }: { href: string; children: string }) {
   return (
-    <footer className="mt-20 bg-charcoal text-ivory">
-      <div className="container-page grid gap-10 py-14 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <p className="font-display text-2xl tracking-[0.24em]">ABANI</p>
-          <p className="mt-1 text-[9px] uppercase tracking-[0.42em] text-sand">Classic</p>
-          <p className="mt-4 max-w-sm text-sm leading-relaxed text-ivory/70">
-            Uzun elyaf pamuk, ölçülü kalıplar ve sade renkler. İstanbul&apos;da tasarlanan, Türkiye&apos;de
-            üretilen erkek iç giyim temelleri.
+    <a href={href} target="_blank" rel="noopener noreferrer" className={`${linkClass} gap-1.5`}>
+      {children}
+      <ArrowUpRightIcon size={13} className="text-brand-red-light" />
+      <span className="sr-only"> (yeni sekmede açılır)</span>
+    </a>
+  );
+}
+
+export function SiteFooter({ categories }: { categories: NavCategory[] }) {
+  const { men, women } = splitCategories(categories);
+
+  return (
+    <footer className="surface-dark mt-20">
+      <div className="container-page grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-12 lg:gap-8">
+        <div className="sm:col-span-2 lg:col-span-4 lg:pr-6">
+          <Link href="/" aria-label="Abani Classic ana sayfa" className="inline-flex flex-col leading-none">
+            <span className="font-display text-2xl font-medium tracking-[0.24em]">ABANI</span>
+            <span className="mt-1.5 text-[9px] font-medium uppercase tracking-[0.46em] text-brand-red-light">Classic</span>
+          </Link>
+          <p className="mt-5 max-w-sm text-sm leading-relaxed text-ivory/75">
+            Erkek iç giyimde güvendiğiniz markaları bir araya getiren mağaza: Tutku, Jiber, Seher Yıldızı,
+            Çift Kaplan ve Abani Classic.
           </p>
-          <p className="eyebrow mt-6 text-sand">Bülten</p>
-          <p className="mt-1 text-xs text-ivory/60">
-            Yeni seçkiler ve bakım önerileri. İletişim izninizi dilediğiniz an geri alabilirsiniz.
+          <h2 className={`${headingClass} mt-8`}>Bülten</h2>
+          <p className="mt-2 max-w-sm text-xs leading-relaxed text-ivory/70">
+            Yeni ürün ve duyurulardan e-posta ile haberdar olun. İletişim izninizi dilediğiniz an geri
+            alabilirsiniz.
           </p>
           <NewsletterForm />
         </div>
 
-        <div>
-          <p className="eyebrow text-sand">Alışveriş</p>
-          <ul className="mt-3 space-y-2 text-sm text-ivory/75">
-            <li><Link href="/kategoriler/erkek-boxer" className="hover:text-white">Erkek Boxer</Link></li>
-            <li><Link href="/kategoriler/erkek-slip" className="hover:text-white">Erkek Slip</Link></li>
-            <li><Link href="/kategoriler/erkek-atlet" className="hover:text-white">Erkek Atlet</Link></li>
-            <li><Link href="/kategoriler/erkek-corap" className="hover:text-white">Erkek Çorap</Link></li>
-            <li><Link href="/kategoriler/termal-iclik" className="hover:text-white">Termal İçlik</Link></li>
-            <li><Link href="/markalar" className="hover:text-white">Markalar</Link></li>
+        <nav aria-labelledby="footer-shop" className="lg:col-span-2">
+          <h2 id="footer-shop" className={headingClass}>
+            Alışveriş
+          </h2>
+          <ul className="mt-4 space-y-1 text-sm">
+            {[...men, ...women].map((category) => (
+              <li key={category.slug}>
+                <Link href={categoryHref(category.slug)} className={linkClass}>
+                  {category.name}
+                </Link>
+              </li>
+            ))}
+            <li>
+              <Link href="/markalar" className={linkClass}>
+                Markalar
+              </Link>
+            </li>
+            <li>
+              <Link href="/kampanyalar" className={linkClass}>
+                Kampanyalar
+              </Link>
+            </li>
           </ul>
-        </div>
+        </nav>
 
-        <div>
-          <p className="eyebrow text-sand">Kurumsal</p>
-          <ul className="mt-3 space-y-2 text-sm text-ivory/75">
-            <li><Link href="/yasal/mesafeli-satis" className="hover:text-white">Mesafeli satış sözleşmesi</Link></li>
-            <li><Link href="/yasal/kvkk" className="hover:text-white">KVKK aydınlatma metni</Link></li>
-            <li><Link href="/yasal/gizlilik" className="hover:text-white">Gizlilik ve çerezler</Link></li>
-            <li><Link href="/yasal/iade" className="hover:text-white">İade ve değişim</Link></li>
-            <li><Link href="/siparis-takip" className="hover:text-white">Sipariş takibi</Link></li>
-            <li><Link href="/admin" className="hover:text-white">Yönetim paneli</Link></li>
+        <nav aria-labelledby="footer-help" className="lg:col-span-2">
+          <h2 id="footer-help" className={headingClass}>
+            Yardım
+          </h2>
+          <ul className="mt-4 space-y-1 text-sm">
+            {HELP_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className={linkClass}>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <nav aria-labelledby="footer-legal" className="lg:col-span-2">
+          <h2 id="footer-legal" className={headingClass}>
+            Yasal
+          </h2>
+          <ul className="mt-4 space-y-1 text-sm">
+            {LEGAL_LINKS.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className={linkClass}>
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="lg:col-span-2">
+          <h2 className={headingClass}>Bizi takip edin</h2>
+          <ul className="mt-4 space-y-1 text-sm">
+            <li>
+              <ExternalLink href={INSTAGRAM_URL}>Instagram</ExternalLink>
+            </li>
+          </ul>
+          <h2 className={`${headingClass} mt-8`}>Pazaryeri mağazalarımız</h2>
+          <ul className="mt-4 space-y-1 text-sm">
+            {MARKETPLACE_STORES.map((store) => (
+              <li key={store.name}>
+                <ExternalLink href={store.href}>{store.name}</ExternalLink>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
 
       <div className="border-t border-white/10">
-        <div className="container-page flex flex-col gap-2 py-5 text-[11px] text-ivory/50 sm:flex-row sm:items-center sm:justify-between">
+        <div className="container-page py-5 text-xs text-ivory/70">
           <p>© {new Date().getFullYear()} Abani Classic. Tüm hakları saklıdır.</p>
-          <p>Güvenli ödeme altyapısı · 256-bit TLS · Kart bilgisi saklanmaz</p>
         </div>
       </div>
     </footer>

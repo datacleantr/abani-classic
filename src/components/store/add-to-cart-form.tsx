@@ -42,7 +42,7 @@ export function AddToCartForm({ product }: { product: ProductCardView }) {
       setMessage("Seçtiğiniz varyant stokta yok.");
       return;
     }
-    addLine({
+    const result = addLine({
       variantId: selectedVariant.id,
       productId: product.id,
       productSlug: product.slug,
@@ -56,7 +56,7 @@ export function AddToCartForm({ product }: { product: ProductCardView }) {
       quantity: Math.min(quantity, stock),
       maxQuantity: stock,
     });
-    setMessage(null);
+    setMessage(result.limited ? `En fazla ${result.maxQuantity} adet eklenebilir.` : null);
   }
 
   return (
@@ -66,7 +66,7 @@ export function AddToCartForm({ product }: { product: ProductCardView }) {
         {product.listPrice > price ? (
           <>
             <span className="text-sm text-muted line-through">{formatMoney(product.listPrice)}</span>
-            <span className="badge border-sand/60 bg-sand-soft/60 text-charcoal">
+            <span className="badge border-navy/20 bg-navy-tint text-navy">
               %{Math.round(((product.listPrice - price) / product.listPrice) * 100)} avantaj
             </span>
           </>
@@ -111,20 +111,8 @@ export function AddToCartForm({ product }: { product: ProductCardView }) {
 
       {sizesForColor.length > 0 ? (
         <div className="mt-4">
-          <div className="flex items-center justify-between">
-            <p className="field-label">Beden</p>
-            <button
-              type="button"
-              className="text-[11px] uppercase tracking-[0.12em] text-muted underline decoration-line underline-offset-4"
-              onClick={() => {
-                setMessage(
-                  "Beden tablosu: S 46-50 cm, M 50-54 cm, L 54-58 cm, XL 58-62 cm, XXL 62-66 cm bel çevresi.",
-                );
-              }}
-            >
-              Beden tablosu
-            </button>
-          </div>
+          {/* Beden tablosu: ölçüler marka bazında doğrulanınca eklenecek (docs/OPEN_DECISIONS.md). */}
+          <p className="field-label">Beden</p>
           <div className="flex flex-wrap gap-2">
             {sizesForColor.map((variant) => (
               <button
@@ -175,7 +163,7 @@ export function AddToCartForm({ product }: { product: ProductCardView }) {
         <p className="text-xs text-muted">
           {stock > 0 ? (
             <>
-              <span className="text-success">●</span> Stokta {stock} adet · 1-2 iş günü kargo
+              <span className="text-success">●</span> Stokta {stock} adet
             </>
           ) : (
             <span className="text-red-700">Seçilen varyant tükenmiş</span>
@@ -193,9 +181,8 @@ export function AddToCartForm({ product }: { product: ProductCardView }) {
       ) : null}
 
       <ul className="mt-5 grid gap-2 text-xs text-muted">
-        <li>· 1.000 TL üzeri siparişlerde kargo ücretsiz.</li>
-        <li>· 14 gün içinde iade hakkı (hijyen ürünü istisnaları geçerlidir).</li>
-        <li>· Güvenli ödeme: kart bilgileri sistemimizde saklanmaz.</li>
+        <li>· Fiyatlara KDV dahildir; kargo ücreti ödeme adımında gösterilir.</li>
+        <li>· Ödeme yöntemleri ve tutar ödeme adımında açıkça gösterilir; kart bilgisi sitemizde saklanmaz.</li>
       </ul>
     </div>
   );

@@ -22,18 +22,18 @@ export function NewsletterForm() {
         type="email"
         required
         placeholder="E-posta adresiniz"
-        className="input border-white/20 bg-white/10 text-ivory placeholder:text-ivory/50 focus:border-sand"
+        className="input border-white/20 bg-white/10 text-ivory placeholder:text-ivory/50 focus:border-brand-red-light"
       />
-      <button type="submit" disabled={pending} className="btn-sand shrink-0">
+      <button type="submit" disabled={pending} className="btn-accent shrink-0">
         {pending ? "Kaydediliyor" : "Katıl"}
       </button>
-      <p aria-live="polite" className="text-[11px] text-sand sm:sr-only">
+      <p aria-live="polite" className="text-[11px] text-ivory/80 sm:sr-only">
         {state?.message ?? ""}
       </p>
       {state ? (
         <p
           role="status"
-          className={`text-xs sm:hidden ${state.ok ? "text-sand" : "text-red-300"}`}
+          className={`text-xs sm:hidden ${state.ok ? "text-ivory/80" : "text-brand-red-light"}`}
         >
           {state.message}
         </p>
