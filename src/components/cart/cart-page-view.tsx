@@ -63,7 +63,7 @@ export function CartPageView() {
       <div className="mx-auto mt-10 max-w-md rounded-2xl border border-dashed border-line bg-white p-10 text-center">
         <p className="font-display text-2xl">Sepetiniz boş</p>
         <p className="mt-2 text-sm text-muted">
-          Koleksiyondan birkaç temel parça ekleyerek başlayın. 1.000 TL üzeri kargo ücretsiz.
+          Koleksiyondan birkaç temel parça ekleyerek başlayın.
         </p>
         <Link href="/arama" className="btn-dark mt-6">
           Koleksiyona git
@@ -90,7 +90,7 @@ export function CartPageView() {
               </Link>
               <div className="flex flex-1 flex-col">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-muted">{line.brandName}</p>
-                <Link href={`/urun/${line.productSlug}`} className="text-sm hover:text-sand">
+                <Link href={`/urun/${line.productSlug}`} className="text-sm hover:text-brand-red">
                   {line.productName}
                 </Link>
                 <p className="text-xs text-muted">{line.variantLabel}</p>
@@ -137,7 +137,8 @@ export function CartPageView() {
               id="coupon"
               value={couponInput}
               onChange={(event) => setCouponInput(event.target.value.toUpperCase())}
-              placeholder="ABANI10"
+              placeholder="İndirim kodu"
+              autoComplete="off"
               className="input"
             />
             <button
@@ -164,11 +165,7 @@ export function CartPageView() {
                 {couponCode} kodunu kaldır
               </button>
             </p>
-          ) : (
-            <p className="mt-2 text-[11px] text-muted">
-              Deneme kodları: ABANI10 (%10), HOSGELDIN (100 TL), KARGOBENDEN (ücretsiz kargo).
-            </p>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -198,12 +195,6 @@ export function CartPageView() {
           </p>
         </dl>
 
-        {quote && quote.freeShippingThreshold > quote.subtotal ? (
-          <p className="mt-2 rounded-lg bg-ivory px-3 py-2 text-[11px] text-muted">
-            Ücretsiz kargo için {formatMoney(quote.freeShippingThreshold - quote.subtotal)} daha ekleyin.
-          </p>
-        ) : null}
-
         {issues.length > 0 ? (
           <ul className="mt-3 space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] text-amber-900">
             {issues.map((issue) => (
@@ -225,7 +216,7 @@ export function CartPageView() {
           Alışverişe devam et
         </Link>
         <p className="mt-4 text-[11px] leading-relaxed text-muted">
-          Fiyatlar sipariş anında sunucuda yeniden hesaplanır. Kart bilgileri sitemizde saklanmaz.
+          Fiyatlar sipariş anında sunucuda yeniden hesaplanır. Ödeme yöntemleri ve tutar ödeme adımında açıkça gösterilir; kart bilgisi sitemizde saklanmaz.
         </p>
       </aside>
     </div>

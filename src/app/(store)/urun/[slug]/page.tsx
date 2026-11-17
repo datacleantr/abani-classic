@@ -6,6 +6,7 @@ import { AddToCartForm } from "@/components/store/add-to-cart-form";
 import { ProductCard } from "@/components/store/product-card";
 import { getProductDetail } from "@/lib/catalog";
 import { formatDate, formatMoney, jsonLd } from "@/lib/format";
+import { packLabel, PRODUCT_IMAGE_PLACEHOLDER } from "@/lib/product-card-helpers";
 
 export const dynamic = "force-dynamic";
 
@@ -15,16 +16,20 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const product = await getProductDetail(slug);
   if (!product) return { title: "Ürün bulunamadı" };
+  // Yalnızca gerçek alanlar: kısa açıklama yoksa ad, marka, (kayıtlıysa) kumaş ve paket bilgisi.
+  const description =
+    product.shortDescription?.trim() ||
+    [product.name, product.brandName, product.fabric?.trim(), packLabel(product.packQuantity) ?? product.packInfo?.trim()]
+      .filter(Boolean)
+      .join(" · ");
   return {
     title: `${product.name} — ${product.brandName}`,
-    description:
-      product.shortDescription ??
-      `${product.name} · ${product.fabric ?? "pamuklu dokuma"} · Abani Classic güvencesiyle.`,
+    description,
     alternates: { canonical: `/urun/${product.slug}` },
     openGraph: {
       title: product.name,
-      description: product.shortDescription ?? undefined,
-      images: [{ url: product.image }],
+      description,
+      images: product.image === PRODUCT_IMAGE_PLACEHOLDER ? undefined : [{ url: product.image }],
       type: "website",
     },
   };
@@ -39,7 +44,7 @@ export default async function ProductPage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "Product",
     name: product.name,
-    image: product.images.map((image) => image.url),
+    image: product.images.map((image) => image.url).filter((url) => url !== PRODUCT_IMAGE_PLACEHOLDER),
     description: product.description ?? product.shortDescription ?? product.name,
     sku: product.variants[0]?.sku,
     brand: { "@type": "Brand", name: product.brandName },
@@ -161,8 +166,8 @@ export default async function ProductPage({ params }: PageProps) {
                   <span aria-hidden="true" className="text-muted">+</span>
                 </summary>
                 <p className="mt-2 text-xs leading-relaxed text-muted">
-                  14:00&apos;a kadar verilen siparişler aynı iş günü kargoya verilir. Teslimat süresi
-                  Türkiye genelinde 1-3 iş günüdür. 1.000 TL üzeri siparişlerde kargo ücretsizdir.
+                  Kargo ücreti sepet tutarına göre hesaplanır ve ödeme adımında sipariş özetinde
+                  gösterilir. Siparişinizi kargoya verildikten sonra takip numarasıyla izleyebilirsiniz.
                 </p>
               </details>
               <details className="group border-t border-line pt-3">
@@ -171,9 +176,11 @@ export default async function ProductPage({ params }: PageProps) {
                   <span aria-hidden="true" className="text-muted">+</span>
                 </summary>
                 <p className="mt-2 text-xs leading-relaxed text-muted">
-                  Teslimattan sonra 14 gün içinde iade talebi oluşturabilirsiniz. İç giyim ve hijyen
-                  ürünlerinde cayma hakkı istisnaları ambalaj ve mühür durumuna göre değerlendirilir;
-                  her talep ayrıca incelenir.
+                  İade ve cayma koşulları{" "}
+                  <Link href="/yasal/iade" className="underline decoration-line underline-offset-2">
+                    İade ve Değişim
+                  </Link>{" "}
+                  sayfasında yer alır. İç giyim ve hijyen ürünlerinde her talep ayrıca incelenir.
                 </p>
               </details>
             </div>
@@ -222,7 +229,7 @@ export default async function ProductPage({ params }: PageProps) {
                   <li key={review.id} className="py-4 first:pt-0">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium">{review.title ?? "Değerlendirme"}</p>
-                      <span className="text-xs text-sand" aria-label={`${review.rating} yıldız`}>
+                      <span className="text-xs text-navy" aria-label={`${review.rating} yıldız`}>
                         {"★".repeat(review.rating)}
                       </span>
                     </div>

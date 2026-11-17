@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-label="Görsel yok">
+  <rect width="800" height="1000" fill="#F1EEE8"/>
+  <g fill="none" stroke="#B9B2A6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="290" y="390" width="220" height="170" rx="14"/>
+    <circle cx="352" cy="445" r="20"/>
+    <path d="M300 540l70-62 48 40 34-28 48 50"/>
+  </g>
+  <text x="400" y="625" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="34" fill="#8C8578" letter-spacing="2">Görsel yok</text>
+</svg>

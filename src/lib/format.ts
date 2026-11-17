@@ -1,3 +1,5 @@
+import { compareSizes } from "./product-card-helpers";
+
 export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
 }
@@ -80,14 +82,9 @@ export const PRODUCT_STATUS_LABELS: Record<string, string> = {
   archived: "Arşiv",
 };
 
-export const SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL", "39-42", "43-46"];
-
+/** Harf bedenleri (XS…5XL, XXL=2XL), ardından sayısal/aralık bedenler ("40 - 44"). */
 export function sortSizes(sizes: string[]): string[] {
-  return [...new Set(sizes)].sort((a, b) => {
-    const ai = SIZE_ORDER.indexOf(a);
-    const bi = SIZE_ORDER.indexOf(b);
-    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-  });
+  return [...new Set(sizes)].sort(compareSizes);
 }
 
 export function pluralize(count: number, word: string): string {

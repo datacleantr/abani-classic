@@ -31,14 +31,14 @@ export default async function BrandsPage() {
           <Link
             key={brand.id}
             href={`/markalar/${brand.slug}`}
-            className="group rounded-2xl border border-line bg-white p-6 transition hover:border-sand"
+            className="group rounded-2xl border border-line bg-white p-6 transition hover:border-navy/40"
           >
             <p className="eyebrow">{brand.origin ?? "Türkiye"}</p>
             <h2 className="mt-2 font-display text-2xl">{brand.name}</h2>
             <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted">
               {brand.description ?? "Katalogda yer alan ürünler."}
             </p>
-            <p className="mt-4 text-xs text-charcoal group-hover:text-sand">
+            <p className="mt-4 text-xs text-charcoal group-hover:text-brand-red">
               {brand.productCount} ürün · Koleksiyonu gör →
             </p>
           </Link>

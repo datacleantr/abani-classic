@@ -2,186 +2,206 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
-import { useCart } from "@/components/cart/cart-store";
+import { CART_TRIGGER_ATTRIBUTE, useCart } from "@/components/cart/cart-store";
+import { useFavorites } from "@/components/favorites/favorites-store";
 import { cn } from "@/lib/format";
 
-type NavItem = { name: string; slug: string };
+import { BrandLogo } from "./brand-logo";
+import { BagIcon, CloseIcon, HeartIcon, SearchIcon, UserIcon } from "./icons";
+import { MobileMenu } from "./mobile-menu";
+import {
+  buildPrimaryNav,
+  isActivePath,
+  womenMenuCategories,
+  type NavBrand,
+  type NavCategory,
+} from "./navigation";
+import { WomenMenu } from "./women-menu";
+
+const formatBadge = (count: number) => (count > 99 ? "99+" : String(count));
+
+/** Ana menü öğesi: 44px yükseklik, aktifte/üzerinde kırmızı alt çizgi. Bağlantı ve "Kadın" düğmesi ortak. */
+const navLinkClass = (active: boolean) =>
+  cn(
+    "relative inline-flex h-11 items-center whitespace-nowrap text-[13px] font-medium transition-colors xl:text-[14px]",
+    "after:absolute after:inset-x-0 after:bottom-1.5 after:h-0.5 after:origin-left after:rounded-full after:bg-brand-red after:transition-transform",
+    active
+      ? "text-navy after:scale-x-100"
+      : "text-charcoal/80 after:scale-x-0 hover:text-navy hover:after:scale-x-100",
+  );
 
 export function SiteHeader({
   categories,
   brands,
   customerName,
 }: {
-  categories: NavItem[];
-  brands: NavItem[];
+  categories: NavCategory[];
+  brands: NavBrand[];
   customerName: string | null;
 }) {
-  const { itemCount, openDrawer } = useCart();
+  const cart = useCart();
+  const favorites = useFavorites();
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [lastPathname, setLastPathname] = useState(pathname);
+  const searchToggleRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchPanelId = useId();
+
+  // Sayfa değişince arama panelini kapat (render sırasında türetilmiş durum güncellemesi).
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    setSearchOpen(false);
+  }
+
+  useEffect(() => {
+    if (searchOpen) searchInputRef.current?.focus();
+  }, [searchOpen]);
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    searchToggleRef.current?.focus();
+  };
+
+  const onSearchKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      closeSearch();
+    }
+  };
+
+  const navItems = buildPrimaryNav(categories);
+  const womenCategories = womenMenuCategories(categories);
+  const cartCount = cart.isReady ? cart.itemCount : 0;
+  const favoriteCount = favorites.isReady ? favorites.count : 0;
+  const firstName = customerName?.split(" ")[0] ?? null;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-line/80 bg-ivory/95 backdrop-blur">
-      <div className="bg-charcoal text-ivory">
-        <div className="container-page flex h-9 items-center justify-between gap-4 text-[10px] uppercase tracking-[0.18em]">
-          <p className="truncate">1.000 TL üzeri kargo ücretsiz · 14 gün içinde iade</p>
-          <p className="hidden shrink-0 text-sand sm:block">Türkiye geneli hızlı teslimat</p>
-        </div>
-      </div>
+    <header className="sticky top-0 z-40 border-b border-line/80 bg-paper">
+      <div className="container-page flex h-16 items-center gap-2 lg:h-[72px] lg:gap-4">
+        <MobileMenu categories={categories} brands={brands} customerName={customerName} />
 
-      <div className="container-page flex h-16 items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setMenuOpen((open) => !open)}
-            aria-expanded={menuOpen}
-            aria-label="Menüyü aç"
-            className="rounded-md border border-line bg-white p-2 lg:hidden"
-          >
-            <span className="block h-0.5 w-4 bg-charcoal" />
-            <span className="mt-1 block h-0.5 w-4 bg-charcoal" />
-            <span className="mt-1 block h-0.5 w-4 bg-charcoal" />
-          </button>
-          <Link href="/" className="flex flex-col leading-none">
-            <span className="font-display text-[22px] tracking-[0.24em]">ABANI</span>
-            <span className="mt-0.5 text-[9px] uppercase tracking-[0.42em] text-muted">Classic</span>
-          </Link>
-        </div>
+        <Link href="/" className="shrink-0 rounded-sm">
+          <BrandLogo preload className="h-[52px] lg:h-[60px]" />
+        </Link>
 
-        <nav aria-label="Ana menü" className="hidden items-center gap-6 text-[11px] font-medium uppercase tracking-[0.14em] lg:flex">
-          {categories.slice(0, 6).map((category) => (
-            <Link
-              key={category.slug}
-              href={`/kategoriler/${category.slug}`}
-              className={cn(
-                "transition hover:text-sand",
-                pathname === `/kategoriler/${category.slug}` && "text-sand",
-              )}
-            >
-              {category.name.replace("Erkek ", "")}
-            </Link>
-          ))}
-          {categories.length > 6 ? (
-            <details className="group relative">
-              <summary className="cursor-pointer list-none transition hover:text-sand [&::-webkit-details-marker]:hidden">
-                Kadın &amp; diğer
-              </summary>
-              <div className="absolute left-0 top-full z-50 mt-3 min-w-52 rounded-xl border border-line bg-white p-2 shadow-lg">
-                {categories.slice(6).map((category) => (
-                  <Link
-                    key={category.slug}
-                    href={`/kategoriler/${category.slug}`}
-                    className="block rounded-lg px-3 py-2 normal-case tracking-normal text-[13px] hover:bg-ivory"
-                  >
-                    {category.name}
-                  </Link>
-                ))}
-              </div>
-            </details>
-          ) : null}
-          <Link href="/arama?sort=newest" className="text-sand transition hover:text-charcoal">
-            Yeni seçki
-          </Link>
+        {/* lg–xl arası kısa etiketler + dar aralık; xl'de tam etiketler. Satır kırılmaz, taşma olmaz. */}
+        <nav aria-label="Ana menü" className="hidden min-w-0 flex-1 justify-center lg:flex">
+          <ul className="flex items-center gap-3.5 xl:gap-6">
+            {navItems.map((item) => {
+              const active = isActivePath(pathname, item.href, item.exact);
+              return (
+                <Fragment key={item.href}>
+                  {/* "Kadın" açılır menüsü kategorilerden sonra, "Markalar"dan önce. */}
+                  {item.href === "/markalar" ? (
+                    <WomenMenu categories={womenCategories} triggerClassName={navLinkClass} />
+                  ) : null}
+                  <li>
+                    <Link
+                      href={item.href}
+                      aria-current={active && pathname === item.href ? "page" : undefined}
+                      className={navLinkClass(active)}
+                    >
+                      {item.shortLabel === item.label ? (
+                        item.label
+                      ) : (
+                        <>
+                          <span className="xl:hidden">{item.shortLabel}</span>
+                          <span className="hidden xl:inline">{item.label}</span>
+                        </>
+                      )}
+                    </Link>
+                  </li>
+                </Fragment>
+              );
+            })}
+          </ul>
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center lg:ml-0">
           <button
+            ref={searchToggleRef}
             type="button"
-            onClick={() => setSearchOpen((open) => !open)}
+            onClick={() => setSearchOpen((value) => !value)}
             aria-expanded={searchOpen}
-            aria-label="Arama yap"
-            className="rounded-full border border-line bg-white p-2 text-charcoal hover:border-sand"
+            aria-controls={searchOpen ? searchPanelId : undefined}
+            aria-label={searchOpen ? "Aramayı kapat" : "Ürün ara"}
+            className="icon-btn"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
+            {searchOpen ? <CloseIcon /> : <SearchIcon />}
           </button>
+
           <Link
             href={customerName ? "/hesabim" : "/giris"}
-            className="hidden rounded-full border border-line bg-white px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-charcoal hover:border-sand sm:block"
+            aria-label={firstName ? `Hesabım (${firstName})` : "Giriş yap"}
+            aria-current={pathname === "/hesabim" || pathname === "/giris" ? "page" : undefined}
+            className="icon-btn hidden sm:inline-flex"
           >
-            {customerName ? customerName.split(" ")[0] : "Giriş"}
+            <UserIcon />
+            {firstName ? (
+              <span aria-hidden="true" className="absolute bottom-1.5 right-1.5 h-2 w-2 rounded-full bg-success ring-2 ring-paper" />
+            ) : null}
           </Link>
+
+          <Link
+            href="/favoriler"
+            aria-label={favoriteCount > 0 ? `Favoriler, ${favoriteCount} ürün` : "Favoriler"}
+            aria-current={pathname === "/favoriler" ? "page" : undefined}
+            className="icon-btn hidden min-[380px]:inline-flex"
+          >
+            <HeartIcon />
+            {favoriteCount > 0 ? (
+              <span aria-hidden="true" className="count-badge">
+                {formatBadge(favoriteCount)}
+              </span>
+            ) : null}
+          </Link>
+
           <button
             type="button"
-            onClick={openDrawer}
-            className="relative rounded-full border border-charcoal bg-charcoal px-4 py-2 text-[11px] uppercase tracking-[0.12em] text-ivory hover:bg-charcoal-soft"
+            {...{ [CART_TRIGGER_ATTRIBUTE]: "" }}
+            onClick={(event) => cart.openDrawer(event.currentTarget)}
+            aria-haspopup="dialog"
+            aria-expanded={cart.drawerOpen}
+            aria-label={cartCount > 0 ? `Sepet, ${cartCount} ürün` : "Sepet, boş"}
+            className="icon-btn -mr-2 lg:mr-0"
           >
-            Sepet
-            <span className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-sand px-1.5 py-0.5 text-[10px] font-semibold text-charcoal">
-              {itemCount}
-            </span>
+            <BagIcon />
+            {cartCount > 0 ? (
+              <span aria-hidden="true" className="count-badge">
+                {formatBadge(cartCount)}
+              </span>
+            ) : null}
           </button>
         </div>
       </div>
 
       {searchOpen ? (
-        <div className="border-t border-line bg-white/90">
-          <form action="/arama" className="container-page flex items-center gap-2 py-3">
+        <div
+          id={searchPanelId}
+          onKeyDown={onSearchKeyDown}
+          className="animate-slide-down border-t border-line bg-white"
+        >
+          <form action="/arama" role="search" className="container-page flex items-center gap-2 py-3">
             <label htmlFor="header-search" className="sr-only">
               Ürün ara
             </label>
             <input
+              ref={searchInputRef}
               id="header-search"
               name="q"
+              type="search"
+              enterKeyHint="search"
+              autoComplete="off"
               placeholder="Boxer, atlet, marka veya model kodu ara…"
-              className="input"
-              autoFocus
+              className="input min-w-0 border-line text-base sm:text-sm"
             />
-            <button type="submit" className="btn-dark shrink-0">
+            <button type="submit" className="btn-navy shrink-0 px-5">
               Ara
             </button>
           </form>
-        </div>
-      ) : null}
-
-      {menuOpen ? (
-        <div className="border-t border-line bg-white lg:hidden">
-          <div className="container-page grid gap-4 py-4">
-            <div>
-              <p className="eyebrow mb-2">Kategoriler</p>
-              <ul className="grid grid-cols-2 gap-2 text-sm">
-                {categories.map((category) => (
-                  <li key={category.slug}>
-                    <Link
-                      href={`/kategoriler/${category.slug}`}
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-lg border border-line px-3 py-2"
-                    >
-                      {category.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="eyebrow mb-2">Markalar</p>
-              <div className="flex flex-wrap gap-2 text-xs">
-                {brands.map((brand) => (
-                  <Link
-                    key={brand.slug}
-                    href={`/markalar/${brand.slug}`}
-                    onClick={() => setMenuOpen(false)}
-                    className="rounded-full border border-line px-3 py-1.5"
-                  >
-                    {brand.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Link href="/hesabim" onClick={() => setMenuOpen(false)} className="btn-quiet flex-1">
-                Hesabım
-              </Link>
-              <Link href="/admin" onClick={() => setMenuOpen(false)} className="btn-outline flex-1">
-                Yönetim
-              </Link>
-            </div>
-          </div>
         </div>
       ) : null}
     </header>

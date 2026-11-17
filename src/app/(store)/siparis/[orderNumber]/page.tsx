@@ -191,8 +191,11 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
             <section className="rounded-2xl border border-line bg-white p-5">
               <h3 className="text-lg">İade talebi</h3>
               <p className="mt-1 text-xs text-muted">
-                Tahmini iade penceresi: teslimattan sonra 14 gün. Talebiniz operasyon ekibi tarafından
-                incelenir.
+                İade koşulları{" "}
+                <Link href="/yasal/iade" className="underline decoration-line underline-offset-2">
+                  İade ve Değişim
+                </Link>{" "}
+                sayfasındadır. Talebiniz operasyon ekibi tarafından incelenir.
               </p>
               <ReturnRequestForm
                 orderNumber={order.orderNumber}
@@ -259,7 +262,7 @@ export default async function OrderDetailPage({ params, searchParams }: PageProp
             <p className="mt-1">
               Sipariş numaranızla{" "}
               <Link href="/siparis-takip" className="underline decoration-line underline-offset-2">sipariş takip</Link>{" "}
-              ekranından durum sorgulayabilirsiniz. Sorularınız için destek@abaniclassic.com.
+              ekranından siparişinizin güncel durumunu her zaman sorgulayabilirsiniz.
             </p>
             <Link href="/hesabim" className="btn-quiet mt-3 w-full">Hesabıma git</Link>
           </section>

@@ -727,7 +727,7 @@ export async function createReturnRequest(input: {
     summary: "İade talebi oluşturuldu.",
   });
 
-  return { ok: true, message: "İade talebiniz alındı. Ekibimiz 2 iş günü içinde dönüş yapacak." };
+  return { ok: true, message: "İade talebiniz alındı. Ekibimiz inceleyip size dönüş yapacak." };
 }
 
 export async function getOrdersByEmailForTracking(email: string) {
